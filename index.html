@@ -7,36 +7,37 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.3.0/firebase-app.js";
     import { getDatabase, ref, push, onValue } from "https://www.gstatic.com/firebasejs/11.3.0/firebase-database.js";
 
-    // Replace the placeholder keys with your actual Firebase config values.
+    // Firebase configuration with actual keys
     const firebaseConfig = {
       apiKey: "AIzaSyAaihPMwzCZEYQV_pUaffWKqIqxubAlzkc",
       authDomain: "lunch-beda3.firebaseapp.com",
       projectId: "lunch-beda3",
-      storageBucket: "lunch-beda3.appspot.com",
+      storageBucket: "lunch-beda3.firebasestorage.app",
       messagingSenderId: "888920791757",
       appId: "1:888920791757:web:848f5a9ce1602e125c2784",
-      // Remove the trailing slash if it appears in your console snippet.
-      databaseURL: "https://lunch-beda3-default-rtdb.firebaseio.com"
+      measurementId: "G-CDDYWJDDE6",
+      // Note: Remove the trailing slash if not present in your console snippet.
+      databaseURL: "https://lunch-beda3-default-rtdb.firebaseio.com/"
     };
 
-    // Initialize Firebase and get the database reference.
+    // Initialize Firebase
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
 
     /**
-     * Listens for changes to the "restaurants" node in the database,
-     * then repopulates the dropdown.
+     * Attach a listener to the "restaurants" node in Firebase,
+     * repopulating the dropdown whenever the data changes.
      */
     function attachRestaurantListener() {
       const restaurantRef = ref(db, "restaurants");
       onValue(restaurantRef, (snapshot) => {
         const select = document.getElementById("restaurant");
-        if (!select) return; // In case the element isn't yet present.
-        
-        // Preserve the current selection (if any) so we can reselect it later.
-        const currentValue = select.value;
-        select.innerHTML = ""; // Clear current options.
-
+        if (!select) {
+          console.error("Element with id 'restaurant' not found in the DOM.");
+          return;
+        }
+        // Clear existing options
+        select.innerHTML = "";
         if (snapshot.exists()) {
           snapshot.forEach((childSnapshot) => {
             const restaurant = childSnapshot.val();
@@ -51,31 +52,26 @@
         newOption.value = "Choose New";
         newOption.textContent = "Choose new restaurant";
         select.appendChild(newOption);
-
-        // If the current value still exists, reselect it.
-        if (currentValue && Array.from(select.options).some(opt => opt.value === currentValue)) {
-          select.value = currentValue;
-        }
       });
     }
 
     /**
-     * When the dropdown selection changes, this function:
-     * - Creates a text input and an Add button when "Choose New" is selected.
-     * - If a restaurant is selected, removes any temporary input/button and shows the selection.
+     * Handles changes to the restaurant dropdown.
+     * If "Choose New" is selected, it creates an input field and an Add button.
+     * When a new restaurant is added, it pushes the value to Firebase and updates the dropdown.
      */
     function handleRestaurantSelection() {
       const select = document.getElementById("restaurant");
       const selectedRestaurantElem = document.getElementById("selectedRestaurant");
-      
-      // Check for an existing input/button (if already created)
+
+      // Check if an input field for a new restaurant already exists.
       let existingInput = document.getElementById("newRestaurantInput");
       let existingButton = document.getElementById("addRestaurantButton");
 
       if (select.value === "Choose New") {
-        // If the input field doesn't already exist, create it.
+        // If the new input field doesn't already exist, create it.
         if (!existingInput) {
-          // Create the input field.
+          // Create a text input for the new restaurant name.
           const newInput = document.createElement("input");
           newInput.type = "text";
           newInput.id = "newRestaurantInput";
@@ -86,30 +82,29 @@
           addButton.id = "addRestaurantButton";
           addButton.textContent = "Add";
 
-          // When Add is clicked, push the new restaurant to Firebase.
+          // When the Add button is clicked, push the new restaurant to Firebase.
           addButton.onclick = function () {
             const newRestaurant = newInput.value.trim();
             if (newRestaurant) {
               push(ref(db, "restaurants"), newRestaurant)
                 .then(() => {
-                  // Update the displayed restaurant.
+                  // Update the display immediately.
                   selectedRestaurantElem.textContent = newRestaurant;
                   // Remove the temporary input and button.
                   newInput.remove();
                   addButton.remove();
-                  // Use a short delay to allow the realtime listener to update the dropdown,
-                  // then select the newly added restaurant.
-                  setTimeout(() => {
-                    select.value = newRestaurant;
-                  }, 500);
+                  // Optionally, set the dropdown's value to the newly added restaurant.
+                  select.value = newRestaurant;
                 })
-                .catch(error => console.error("Error adding new restaurant:", error));
+                .catch((error) => {
+                  console.error("Error adding new restaurant:", error);
+                });
             } else {
               alert("Please enter a restaurant name.");
             }
           };
 
-          // Insert the input field and button right after the dropdown.
+          // Insert the input field and Add button right after the dropdown.
           select.parentNode.insertBefore(newInput, select.nextSibling);
           select.parentNode.insertBefore(addButton, newInput.nextSibling);
           newInput.focus();
@@ -122,25 +117,25 @@
         if (existingButton) {
           existingButton.remove();
         }
-        // Update the displayed selected restaurant.
+        // Update the display with the selected restaurant.
         selectedRestaurantElem.textContent = select.value;
       }
     }
 
-    // Attach the restaurant listener when the DOM content is loaded.
+    // Attach the restaurant listener once the DOM is fully loaded.
     document.addEventListener("DOMContentLoaded", () => {
       attachRestaurantListener();
     });
 
-    // Expose the function so it can be called from inline HTML.
+    // Expose the handleRestaurantSelection function to be callable from inline HTML.
     window.handleRestaurantSelection = handleRestaurantSelection;
   </script>
 </head>
 <body>
   <h1>Restaurant Selector</h1>
-  <!-- The dropdown must have the id "restaurant" and an onchange attribute to call the handler -->
+  <!-- Dropdown for restaurant selection -->
   <select id="restaurant" onchange="handleRestaurantSelection()"></select>
-  <!-- This element displays the selected restaurant -->
+  <!-- Paragraph to display the currently selected restaurant -->
   <p id="selectedRestaurant"></p>
 </body>
 </html>
