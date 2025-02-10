@@ -9,7 +9,7 @@
     <script type="module">
         // Import Firebase SDKs
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.3.0/firebase-app.js";
-        import { getDatabase, ref, push, get, child } from "https://www.gstatic.com/firebasejs/11.3.0/firebase-database.js";
+        import { getDatabase, ref, push, get, onValue } from "https://www.gstatic.com/firebasejs/11.3.0/firebase-database.js";
 
         // Your Firebase configuration
         const firebaseConfig = {
@@ -32,7 +32,11 @@
             const select = document.getElementById("restaurant");
             select.innerHTML = "";
 
-            get(child(ref(db), "restaurants")).then((snapshot) => {
+            const dbRef = ref(db, "restaurants");
+            
+            onValue(dbRef, (snapshot) => {
+                select.innerHTML = "";
+                
                 if (snapshot.exists()) {
                     snapshot.forEach((childSnapshot) => {
                         const restaurant = childSnapshot.val();
@@ -43,7 +47,6 @@
                     });
                 }
 
-                // Add "Choose New" option
                 const newOption = document.createElement("option");
                 newOption.value = "Choose New";
                 newOption.textContent = "Choose new restaurant";
@@ -57,11 +60,21 @@
             if (select.value === "Choose New") {
                 const newRestaurant = prompt("Enter the restaurant name:");
                 if (newRestaurant) {
-                    push(ref(db, "restaurants"), newRestaurant).then(() => updateRestaurantDropdown());
+                    push(ref(db, "restaurants"), newRestaurant);
                     select.value = newRestaurant;
                 } else {
                     select.value = "";
                 }
+            }
+        }
+
+        // Function to submit office attendance
+        function submitResponse() {
+            const name = document.getElementById("name").value;
+            const inOffice = document.querySelector('input[name="officeStatus"]:checked').value;
+            
+            if (name) {
+                push(ref(db, "officeAttendance"), { name: name, inOffice: inOffice });
             }
         }
 
@@ -72,6 +85,17 @@
 <body>
     <h1 style="text-align: center;">Lunch Lottery</h1>
     <p style="text-align: center;" id="currentDate"></p>
+    
+    <h2>Will you be in the office today?</h2>
+    <label for="name">Enter your name:</label>
+    <input type="text" id="name" placeholder="Your name">
+    <label>
+        <input type="radio" name="officeStatus" value="yes"> Yes
+    </label>
+    <label>
+        <input type="radio" name="officeStatus" value="no"> No
+    </label>
+    <button onclick="submitResponse()">Submit</button>
     
     <h2>Restaurant Selector</h2>
     <select id="restaurant" onchange="handleRestaurantSelection()"></select>
