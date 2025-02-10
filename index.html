@@ -13,8 +13,18 @@
             const inOffice = document.getElementById("inOffice").checked;
             if (name && inOffice) {
                 people.push(name);
+                updatePotentialSelectors();
             }
-            document.getElementById("name").value = "";
+        }
+
+        function updatePotentialSelectors() {
+            const list = document.getElementById("potentialSelectors");
+            list.innerHTML = "";
+            people.forEach(person => {
+                const li = document.createElement("li");
+                li.textContent = person;
+                list.appendChild(li);
+            });
         }
 
         function pickRandomPerson() {
@@ -36,11 +46,22 @@
 </head>
 <body>
     <h2>Will you be in the office today?</h2>
-    <input type="text" id="name" placeholder="Enter your name">
+    <label for="name">Select your name:</label>
+    <select id="name">
+        <option value="Alec">Alec</option>
+        <option value="Chai">Chai</option>
+        <option value="Cole">Cole</option>
+        <option value="Denis">Denis</option>
+        <option value="Hunter">Hunter</option>
+        <option value="Pete">Pete</option>
+    </select>
     <label>
         <input type="checkbox" id="inOffice"> Yes
     </label>
     <button onclick="submitResponse()">Submit</button>
+    
+    <h2>Potential Lunch Selector</h2>
+    <ul id="potentialSelectors"></ul>
     
     <h2>Pick a random person</h2>
     <button onclick="pickRandomPerson()">Pick</button>
