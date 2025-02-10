@@ -15,11 +15,18 @@
         }
 
         function submitResponse() {
-            const name = document.getElementById("name").value;
+            const nameSelect = document.getElementById("name");
+            const name = nameSelect.value;
             const inOffice = document.getElementById("inOffice").checked;
-            if (name && inOffice) {
+            const notInOffice = document.getElementById("notInOffice").checked;
+            
+            if (name && inOffice && !notInOffice) {
                 people.push(name);
                 updatePotentialSelectors();
+            }
+            
+            if (name) {
+                nameSelect.remove(nameSelect.selectedIndex);
             }
         }
 
@@ -56,6 +63,17 @@
             document.getElementById("chosenPerson").innerText = "";
             document.getElementById("selectedRestaurant").innerText = "";
             document.getElementById("restaurantInput").style.display = "none";
+            
+            // Reset dropdown options
+            const nameSelect = document.getElementById("name");
+            nameSelect.innerHTML = `
+                <option value="Alec">Alec</option>
+                <option value="Chai">Chai</option>
+                <option value="Cole">Cole</option>
+                <option value="Denis">Denis</option>
+                <option value="Hunter">Hunter</option>
+                <option value="Pete">Pete</option>
+            `;
         }
     </script>
 </head>
