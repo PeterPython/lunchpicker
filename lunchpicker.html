@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lunch Decision</title>
+    <script>
+        let people = [];
+        let chosenPerson = null;
+
+        function submitResponse() {
+            const name = document.getElementById("name").value;
+            const inOffice = document.getElementById("inOffice").checked;
+            if (name && inOffice) {
+                people.push(name);
+            }
+            document.getElementById("name").value = "";
+        }
+
+        function pickRandomPerson() {
+            if (people.length > 0) {
+                const randomIndex = Math.floor(Math.random() * people.length);
+                chosenPerson = people[randomIndex];
+                document.getElementById("chosenPerson").innerText = `Chosen Person: ${chosenPerson}`;
+                document.getElementById("restaurantInput").style.display = "block";
+            }
+        }
+
+        function submitRestaurant() {
+            const restaurant = document.getElementById("restaurant").value;
+            if (chosenPerson && restaurant) {
+                document.getElementById("selectedRestaurant").innerText = `${chosenPerson} chose: ${restaurant}`;
+            }
+        }
+    </script>
+</head>
+<body>
+    <h2>Will you be in the office today?</h2>
+    <input type="text" id="name" placeholder="Enter your name">
+    <label>
+        <input type="checkbox" id="inOffice"> Yes
+    </label>
+    <button onclick="submitResponse()">Submit</button>
+    
+    <h2>Pick a random person</h2>
+    <button onclick="pickRandomPerson()">Pick</button>
+    <p id="chosenPerson"></p>
+    
+    <div id="restaurantInput" style="display: none;">
+        <h2>Enter the restaurant name</h2>
+        <input type="text" id="restaurant" placeholder="Enter restaurant name">
+        <button onclick="submitRestaurant()">Submit</button>
+    </div>
+    
+    <h2>Lunch Decision</h2>
+    <p id="selectedRestaurant"></p>
+</body>
+</html>
