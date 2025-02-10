@@ -1,212 +1,115 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Lunch Decision</title>
-  
-  <!-- Firebase SDK -->
-  <script type="module">
-    // Import Firebase modules
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.3.0/firebase-app.js";
-    import { getDatabase, ref, push, onValue, remove } from "https://www.gstatic.com/firebasejs/11.3.0/firebase-database.js";
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.3.0/firebase-app.js";
+  import { getDatabase, ref, push, onValue, remove } from "https://www.gstatic.com/firebasejs/11.3.0/firebase-database.js";
 
-    // Your Firebase configuration
-    // For Firebase JS SDK v7.20.0 and later, measurementId is optional
-    const firebaseConfig = {
-      apiKey: "AIzaSyAaihPMwzCZEYQV_pUaffWKqIqxubAlzkc",
-      authDomain: "lunch-beda3.firebaseapp.com",
-      projectId: "lunch-beda3",
-      storageBucket: "lunch-beda3.firebasestorage.app",
-      messagingSenderId: "888920791757",
-      appId: "1:888920791757:web:848f5a9ce1602e125c2784",
-      measurementId: "G-CDDYWJDDE6"
-      databaseURL: "https://lunch-beda3-default-rtdb.firebaseio.com/"
-    };
+  // Your Firebase configuration (make sure to include the databaseURL field)
+  const firebaseConfig = {
+    apiKey: "YOUR_WEB_API_KEY",
+    authDomain: "lunch-beda3.firebaseapp.com",
+    projectId: "lunch-beda3",
+    storageBucket: "lunch-beda3.appspot.com",
+    messagingSenderId: "888920791757",
+    appId: "YOUR_APP_ID",
+    databaseURL: "https://lunch-beda3-default-rtdb.firebaseio.com"
+  };
 
-    // Initialize Firebase
-    const app = initializeApp(firebaseConfig);
-    const db = getDatabase(app);
-    console.log("Firebase initialized");
+  // Initialize Firebase
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
 
-    /* ----------------------------
-       Persistent Firebase Listeners
-       ---------------------------- */
-
-    // Listen for changes to office attendance and update the "In Office" list.
-    function attachOfficeAttendanceListener() {
-      const officeAttendanceRef = ref(db, "officeAttendance");
-      onValue(officeAttendanceRef, (snapshot) => {
-        console.log("Office attendance snapshot:", snapshot.val());
-        const list = document.getElementById("officeList");
-        list.innerHTML = ""; // Clear existing list items
-        if (snapshot.exists()) {
-          snapshot.forEach((childSnapshot) => {
-            const name = childSnapshot.val();
-            const li = document.createElement("li");
-            li.textContent = name;
-            list.appendChild(li);
-          });
-        } else {
-          console.log("No attendance data found.");
-        }
-      });
-    }
-
-    // Listen for changes to the restaurant list and update the dropdown.
-    function attachRestaurantListener() {
-      const restaurantRef = ref(db, "restaurants");
-      onValue(restaurantRef, (snapshot) => {
-        console.log("Restaurant snapshot:", snapshot.val());
-        const select = document.getElementById("restaurant");
-        select.innerHTML = "";
-        if (snapshot.exists()) {
-          snapshot.forEach((childSnapshot) => {
-            const restaurant = childSnapshot.val();
-            const option = document.createElement("option");
-            option.value = restaurant;
-            option.textContent = restaurant;
-            select.appendChild(option);
-          });
-        }
-        // Always add the "Choose New" option.
-        const newOption = document.createElement("option");
-        newOption.value = "Choose New";
-        newOption.textContent = "Choose new restaurant";
-        select.appendChild(newOption);
-      });
-    }
-
-    /* ----------------------------
-       UI Interaction Functions
-       ---------------------------- */
-
-    // Handle restaurant selection (or adding a new one)
-    function handleRestaurantSelection() {
+  // Listener for restaurants that updates the dropdown automatically
+  function attachRestaurantListener() {
+    const restaurantRef = ref(db, "restaurants");
+    onValue(restaurantRef, (snapshot) => {
       const select = document.getElementById("restaurant");
-      const selectedRestaurantElem = document.getElementById("selectedRestaurant");
-
-      if (select.value === "Choose New") {
-        const newRestaurant = prompt("Enter the restaurant name:");
-        if (newRestaurant) {
-          console.log("Adding new restaurant:", newRestaurant);
-          push(ref(db, "restaurants"), newRestaurant).then(() => {
-            // Optionally update the display immediately.
-            select.value = newRestaurant;
-            selectedRestaurantElem.textContent = newRestaurant;
-          });
-        } else {
-          select.value = "";
-          selectedRestaurantElem.textContent = "";
-        }
-      } else {
-        selectedRestaurantElem.textContent = select.value;
+      // Clear existing options
+      select.innerHTML = "";
+      if (snapshot.exists()) {
+        snapshot.forEach((childSnapshot) => {
+          const restaurant = childSnapshot.val();
+          const option = document.createElement("option");
+          option.value = restaurant;
+          option.textContent = restaurant;
+          select.appendChild(option);
+        });
       }
-    }
-
-    // Submit the attendance response
-    function submitResponse() {
-      const nameSelect = document.getElementById("name");
-      const name = nameSelect.value;
-      const selectedRadio = document.querySelector('input[name="officeStatus"]:checked');
-
-      if (!selectedRadio) {
-        alert("Please select your office attendance status.");
-        return;
-      }
-
-      const inOffice = selectedRadio.value;
-      console.log("Submitting response:", name, inOffice);
-      // Only push the name if "yes" is selected
-      if (name && inOffice === "yes") {
-        push(ref(db, "officeAttendance"), name)
-          .then(() => {
-            console.log("Attendance recorded for:", name);
-          })
-          .catch((error) => {
-            console.error("Error recording attendance:", error);
-          });
-      }
-    }
-
-    // Pick a random person from the "In Office" list.
-    function pickRandomPerson() {
-      const listItems = document.querySelectorAll("#officeList li");
-      if (listItems.length > 0) {
-        const randomIndex = Math.floor(Math.random() * listItems.length);
-        document.getElementById("selectedPerson").innerText =
-          `Selected: ${listItems[randomIndex].textContent}`;
-      } else {
-        document.getElementById("selectedPerson").innerText = "No one is in the office.";
-      }
-    }
-
-    // Clear all data from Firebase.
-    function clearAll() {
-      remove(ref(db, "officeAttendance"))
-        .then(() => console.log("Cleared office attendance"))
-        .catch((error) => console.error("Error clearing office attendance:", error));
-      remove(ref(db, "restaurants"))
-        .then(() => console.log("Cleared restaurants"))
-        .catch((error) => console.error("Error clearing restaurants:", error));
-      document.getElementById("selectedPerson").innerText = "";
-      document.getElementById("selectedRestaurant").textContent = "";
-    }
-
-    // Set the current date in the UI.
-    function setCurrentDate() {
-      document.getElementById("currentDate").textContent = new Date().toLocaleDateString();
-    }
-
-    // Initialize the app when DOM content is loaded.
-    document.addEventListener("DOMContentLoaded", () => {
-      setCurrentDate();
-      attachOfficeAttendanceListener();
-      attachRestaurantListener();
+      // Always add the "Choose New" option at the end.
+      const newOption = document.createElement("option");
+      newOption.value = "Choose New";
+      newOption.textContent = "Choose new restaurant";
+      select.appendChild(newOption);
     });
+  }
 
-    // Expose functions for inline event handlers.
-    window.submitResponse = submitResponse;
-    window.pickRandomPerson = pickRandomPerson;
-    window.clearAll = clearAll;
-    window.handleRestaurantSelection = handleRestaurantSelection;
-  </script>
-</head>
-<body>
-  <h1 style="text-align: center;">Lunch Lottery</h1>
-  <p style="text-align: center;" id="currentDate"></p>
-  
-  <h2>Will you be in the office today?</h2>
-  <label for="name">Select your name:</label>
-  <select id="name">
-    <option value="Alec">Alec</option>
-    <option value="Chai">Chai</option>
-    <option value="Cole">Cole</option>
-    <option value="Denis">Denis</option>
-    <option value="Hunter">Hunter</option>
-    <option value="Pete">Pete</option>
-  </select>
-  <label>
-    <input type="radio" name="officeStatus" value="yes" /> Yes
-  </label>
-  <label>
-    <input type="radio" name="officeStatus" value="no" /> No
-  </label>
-  <button onclick="submitResponse()">Submit</button>
-  
-  <h2>In Office</h2>
-  <ul id="officeList"></ul>
-  
-  <h2>Pick a random person</h2>
-  <button onclick="pickRandomPerson()">Pick</button>
-  <p id="selectedPerson"></p>
-  
-  <h2>Restaurant Selector</h2>
-  <select id="restaurant" onchange="handleRestaurantSelection()"></select>
-  
-  <h2>Lunch Decision</h2>
-  <p id="selectedRestaurant"></p>
-  
-  <button onclick="clearAll()">Clear All</button>
-</body>
-</html>
+  // Function to handle restaurant selection changes.
+  function handleRestaurantSelection() {
+    const select = document.getElementById("restaurant");
+    const selectedRestaurantElem = document.getElementById("selectedRestaurant");
+    
+    // Check if an input field for new restaurant already exists; if so, do nothing.
+    let existingInput = document.getElementById("newRestaurantInput");
+    let existingButton = document.getElementById("addRestaurantButton");
+
+    if (select.value === "Choose New") {
+      // If the new input field does not exist, create it.
+      if (!existingInput) {
+        // Create a text input for the new restaurant name.
+        const newInput = document.createElement("input");
+        newInput.type = "text";
+        newInput.id = "newRestaurantInput";
+        newInput.placeholder = "Enter new restaurant name";
+
+        // Create an "Add" button.
+        const addButton = document.createElement("button");
+        addButton.textContent = "Add";
+        addButton.id = "addRestaurantButton";
+
+        // When the button is clicked, add the new restaurant to Firebase.
+        addButton.onclick = function () {
+          const newRestaurant = newInput.value.trim();
+          if (newRestaurant) {
+            push(ref(db, "restaurants"), newRestaurant)
+              .then(() => {
+                // Optionally update the display immediately.
+                selectedRestaurantElem.textContent = newRestaurant;
+                // Clear and remove the input and button.
+                newInput.value = "";
+                newInput.remove();
+                addButton.remove();
+                // Optionally, set the dropdown's value to the newly added restaurant.
+                select.value = newRestaurant;
+              })
+              .catch((error) => {
+                console.error("Error adding new restaurant:", error);
+              });
+          } else {
+            alert("Please enter a restaurant name.");
+          }
+        };
+
+        // Insert the input and button right after the dropdown.
+        select.parentNode.insertBefore(newInput, select.nextSibling);
+        select.parentNode.insertBefore(addButton, newInput.nextSibling);
+        newInput.focus();
+      }
+    } else {
+      // If a new restaurant was not selected, remove any new input if it exists.
+      if (existingInput) {
+        existingInput.remove();
+      }
+      if (existingButton) {
+        existingButton.remove();
+      }
+      // Update the display with the selected restaurant.
+      selectedRestaurantElem.textContent = select.value;
+    }
+  }
+
+  // Attach listeners on DOMContentLoaded.
+  document.addEventListener("DOMContentLoaded", () => {
+    attachRestaurantListener();
+  });
+
+  // Expose the function to the global scope for inline event handling.
+  window.handleRestaurantSelection = handleRestaurantSelection;
+</script>
