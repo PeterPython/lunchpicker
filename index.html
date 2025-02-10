@@ -9,7 +9,7 @@
     <script type="module">
         // Import Firebase SDKs
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.3.0/firebase-app.js";
-        import { getDatabase, ref, push, get, onValue } from "https://www.gstatic.com/firebasejs/11.3.0/firebase-database.js";
+        import { getDatabase, ref, push, get, onValue, remove } from "https://www.gstatic.com/firebasejs/11.3.0/firebase-database.js";
 
         // Your Firebase configuration
         const firebaseConfig = {
@@ -20,7 +20,7 @@
             messagingSenderId: "888920791757",
             appId: "1:888920791757:web:848f5a9ce1602e125c2784",
             measurementId: "G-CDDYWJDDE6",
-            databaseURL: "https://lunch-beda3-default-rtdb.firebaseio.com/" // Added database URL
+            databaseURL: "https://lunch-beda3-default-rtdb.firebaseio.com/"
         };
 
         // Initialize Firebase
@@ -73,13 +73,54 @@
             const name = document.getElementById("name").value;
             const inOffice = document.querySelector('input[name="officeStatus"]:checked').value;
             
-            if (name) {
-                push(ref(db, "officeAttendance"), { name: name, inOffice: inOffice });
+            if (name && inOffice === "yes") {
+                push(ref(db, "officeAttendance"), name);
             }
         }
 
-        // Load restaurants when page loads
-        document.addEventListener("DOMContentLoaded", updateRestaurantDropdown);
+        // Function to update office list
+        function updateOfficeList() {
+            const list = document.getElementById("officeList");
+            list.innerHTML = "";
+
+            const dbRef = ref(db, "officeAttendance");
+            
+            onValue(dbRef, (snapshot) => {
+                list.innerHTML = "";
+                if (snapshot.exists()) {
+                    snapshot.forEach((childSnapshot) => {
+                        const name = childSnapshot.val();
+                        const li = document.createElement("li");
+                        li.textContent = name;
+                        list.appendChild(li);
+                    });
+                }
+            });
+        }
+
+        // Function to randomly pick a person
+        function pickRandomPerson() {
+            const listItems = document.querySelectorAll("#officeList li");
+            if (listItems.length > 0) {
+                const randomIndex = Math.floor(Math.random() * listItems.length);
+                document.getElementById("selectedPerson").innerText = `Selected: ${listItems[randomIndex].textContent}`;
+            }
+        }
+
+        // Function to clear all data
+        function clearAll() {
+            remove(ref(db, "officeAttendance"));
+            remove(ref(db, "restaurants"));
+            document.getElementById("selectedPerson").innerText = "";
+            updateOfficeList();
+            updateRestaurantDropdown();
+        }
+
+        // Load data when page loads
+        document.addEventListener("DOMContentLoaded", () => {
+            updateRestaurantDropdown();
+            updateOfficeList();
+        });
     </script>
 </head>
 <body>
@@ -87,8 +128,15 @@
     <p style="text-align: center;" id="currentDate"></p>
     
     <h2>Will you be in the office today?</h2>
-    <label for="name">Enter your name:</label>
-    <input type="text" id="name" placeholder="Your name">
+    <label for="name">Select your name:</label>
+    <select id="name">
+        <option value="Alec">Alec</option>
+        <option value="Chai">Chai</option>
+        <option value="Cole">Cole</option>
+        <option value="Denis">Denis</option>
+        <option value="Hunter">Hunter</option>
+        <option value="Pete">Pete</option>
+    </select>
     <label>
         <input type="radio" name="officeStatus" value="yes"> Yes
     </label>
@@ -97,10 +145,19 @@
     </label>
     <button onclick="submitResponse()">Submit</button>
     
+    <h2>In Office</h2>
+    <ul id="officeList"></ul>
+    
+    <h2>Pick a random person</h2>
+    <button onclick="pickRandomPerson()">Pick</button>
+    <p id="selectedPerson"></p>
+    
     <h2>Restaurant Selector</h2>
     <select id="restaurant" onchange="handleRestaurantSelection()"></select>
     
     <h2>Lunch Decision</h2>
     <p id="selectedRestaurant"></p>
+    
+    <button onclick="clearAll()">Clear All</button>
 </body>
 </html>
