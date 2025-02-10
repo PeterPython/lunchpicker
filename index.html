@@ -7,6 +7,7 @@
   
   <!-- Firebase SDK -->
   <script type="module">
+    // Import Firebase modules
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.3.0/firebase-app.js";
     import { getDatabase, ref, push, onValue, remove } from "https://www.gstatic.com/firebasejs/11.3.0/firebase-database.js";
 
@@ -25,17 +26,19 @@
     // Initialize Firebase
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
+    console.log("Firebase initialized");
 
     /* ----------------------------
-       Persistent Database Listeners
+       Persistent Firebase Listeners
        ---------------------------- */
 
-    // Listener for office attendance: updates the "In Office" list whenever data changes.
+    // Listen for changes to office attendance and update the "In Office" list.
     function attachOfficeAttendanceListener() {
       const officeAttendanceRef = ref(db, "officeAttendance");
       onValue(officeAttendanceRef, (snapshot) => {
+        console.log("Office attendance snapshot:", snapshot.val());
         const list = document.getElementById("officeList");
-        list.innerHTML = ""; // Clear the list
+        list.innerHTML = ""; // Clear existing list items
         if (snapshot.exists()) {
           snapshot.forEach((childSnapshot) => {
             const name = childSnapshot.val();
@@ -43,16 +46,19 @@
             li.textContent = name;
             list.appendChild(li);
           });
+        } else {
+          console.log("No attendance data found.");
         }
       });
     }
 
-    // Listener for restaurants: updates the restaurant dropdown whenever data changes.
+    // Listen for changes to the restaurant list and update the dropdown.
     function attachRestaurantListener() {
       const restaurantRef = ref(db, "restaurants");
       onValue(restaurantRef, (snapshot) => {
+        console.log("Restaurant snapshot:", snapshot.val());
         const select = document.getElementById("restaurant");
-        select.innerHTML = ""; // Clear the dropdown
+        select.innerHTML = "";
         if (snapshot.exists()) {
           snapshot.forEach((childSnapshot) => {
             const restaurant = childSnapshot.val();
@@ -62,7 +68,7 @@
             select.appendChild(option);
           });
         }
-        // Always add the "Choose New" option at the end.
+        // Always add the "Choose New" option.
         const newOption = document.createElement("option");
         newOption.value = "Choose New";
         newOption.textContent = "Choose new restaurant";
@@ -71,10 +77,10 @@
     }
 
     /* ----------------------------
-       Functions for UI interactions
+       UI Interaction Functions
        ---------------------------- */
 
-    // When a restaurant is selected (or "Choose New" is picked)
+    // Handle restaurant selection (or adding a new one)
     function handleRestaurantSelection() {
       const select = document.getElementById("restaurant");
       const selectedRestaurantElem = document.getElementById("selectedRestaurant");
@@ -82,14 +88,13 @@
       if (select.value === "Choose New") {
         const newRestaurant = prompt("Enter the restaurant name:");
         if (newRestaurant) {
-          // Save the new restaurant and update the dropdown display.
+          console.log("Adding new restaurant:", newRestaurant);
           push(ref(db, "restaurants"), newRestaurant).then(() => {
-            // Optionally set the select value and update the display immediately.
+            // Optionally update the display immediately.
             select.value = newRestaurant;
             selectedRestaurantElem.textContent = newRestaurant;
           });
         } else {
-          // If nothing is entered, clear the selection.
           select.value = "";
           selectedRestaurantElem.textContent = "";
         }
@@ -98,7 +103,7 @@
       }
     }
 
-    // When the "Submit" button is clicked in the attendance section.
+    // Submit the attendance response
     function submitResponse() {
       const nameSelect = document.getElementById("name");
       const name = nameSelect.value;
@@ -110,9 +115,16 @@
       }
 
       const inOffice = selectedRadio.value;
-      // Only record the attendance if "yes" was selected.
+      console.log("Submitting response:", name, inOffice);
+      // Only push the name if "yes" is selected
       if (name && inOffice === "yes") {
-        push(ref(db, "officeAttendance"), name);
+        push(ref(db, "officeAttendance"), name)
+          .then(() => {
+            console.log("Attendance recorded for:", name);
+          })
+          .catch((error) => {
+            console.error("Error recording attendance:", error);
+          });
       }
     }
 
@@ -128,27 +140,31 @@
       }
     }
 
-    // Clear all data from Firebase and update the UI.
+    // Clear all data from Firebase.
     function clearAll() {
-      remove(ref(db, "officeAttendance"));
-      remove(ref(db, "restaurants"));
+      remove(ref(db, "officeAttendance"))
+        .then(() => console.log("Cleared office attendance"))
+        .catch((error) => console.error("Error clearing office attendance:", error));
+      remove(ref(db, "restaurants"))
+        .then(() => console.log("Cleared restaurants"))
+        .catch((error) => console.error("Error clearing restaurants:", error));
       document.getElementById("selectedPerson").innerText = "";
       document.getElementById("selectedRestaurant").textContent = "";
     }
 
-    // Display the current date.
+    // Set the current date in the UI.
     function setCurrentDate() {
       document.getElementById("currentDate").textContent = new Date().toLocaleDateString();
     }
 
-    // When the document is ready, set up listeners and initialize the UI.
+    // Initialize the app when DOM content is loaded.
     document.addEventListener("DOMContentLoaded", () => {
       setCurrentDate();
       attachOfficeAttendanceListener();
       attachRestaurantListener();
     });
 
-    // Expose functions to the global scope so they can be called from inline event handlers.
+    // Expose functions for inline event handlers.
     window.submitResponse = submitResponse;
     window.pickRandomPerson = pickRandomPerson;
     window.clearAll = clearAll;
