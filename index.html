@@ -112,13 +112,36 @@
     <h2>In office</h2>
     <ul id="potentialSelectors" style="color: lightgray; font-style: italic; list-style-type: none; padding: 0;">Names</ul>
     
-    <h2>Pick restaurant selector</h2>
+    <h2>Restaurant selector</h2>
     <button onclick="pickRandomPerson()">Pick</button>
     <p id="chosenPerson"></p>
     
     <div id="restaurantInput" style="display: none;">
-        <h2>Enter the restaurant name</h2>
-        <input type="text" id="restaurant" placeholder="Enter restaurant name">
+        <h2>Restaurant name</h2>
+        <select id="restaurant" onchange="handleRestaurantSelection()">
+            <option value="">Choose a restaurant</option>
+            <option value="Pizza Place">Pizza Place</option>
+            <option value="Sushi Spot">Sushi Spot</option>
+            <option value="Burger Joint">Burger Joint</option>
+            <option value="Choose New">Choose new restaurant</option>
+        </select>
+        <script>
+            function handleRestaurantSelection() {
+                const select = document.getElementById("restaurant");
+                if (select.value === "Choose New") {
+                    const newRestaurant = prompt("Enter the restaurant name:");
+                    if (newRestaurant) {
+                        const newOption = document.createElement("option");
+                        newOption.value = newRestaurant;
+                        newOption.textContent = newRestaurant;
+                        select.insertBefore(newOption, select.lastElementChild);
+                        select.value = newRestaurant;
+                    } else {
+                        select.value = "";
+                    }
+                }
+            }
+        </script>
         <button onclick="submitRestaurant()">Submit</button>
     </div>
     
