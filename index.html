@@ -146,6 +146,30 @@
     </div>
     
     <h2>Lunch Decision</h2>
+    <select id="restaurant" onchange="handleRestaurantSelection()">
+        <option value="">Choose a restaurant</option>
+        <option value="Pizza Place">Pizza Place</option>
+        <option value="Sushi Spot">Sushi Spot</option>
+        <option value="Burger Joint">Burger Joint</option>
+        <option value="Choose New">Choose new restaurant</option>
+    </select>
+    <script>
+        function handleRestaurantSelection() {
+            const select = document.getElementById("restaurant");
+            if (select.value === "Choose New") {
+                const newRestaurant = prompt("Enter the restaurant name:");
+                if (newRestaurant) {
+                    const newOption = document.createElement("option");
+                    newOption.value = newRestaurant;
+                    newOption.textContent = newRestaurant;
+                    select.insertBefore(newOption, select.lastElementChild);
+                    select.value = newRestaurant;
+                } else {
+                    select.value = "";
+                }
+            }
+        }
+    </script>
     <p id="selectedRestaurant"></p>
     
     <button onclick="clearAll()">Clear</button>
