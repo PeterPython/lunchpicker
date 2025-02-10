@@ -8,6 +8,11 @@
         let people = [];
         let chosenPerson = null;
 
+        function updateDate() {
+            const today = new Date();
+            document.getElementById("currentDate").innerText = today.toDateString();
+        }
+
         function submitResponse() {
             const name = document.getElementById("name").value;
             const inOffice = document.getElementById("inOffice").checked;
@@ -42,10 +47,21 @@
                 document.getElementById("selectedRestaurant").innerText = `${chosenPerson} chose: ${restaurant}`;
             }
         }
+
+        function clearAll() {
+            people = [];
+            chosenPerson = null;
+            document.getElementById("potentialSelectors").innerHTML = "";
+            document.getElementById("chosenPerson").innerText = "";
+            document.getElementById("selectedRestaurant").innerText = "";
+            document.getElementById("restaurantInput").style.display = "none";
+        }
     </script>
 </head>
-<body>
+<body onload="updateDate()">
     <h1 style="text-align: center;">Lunch Lottery</h1>
+    <p style="text-align: center;" id="currentDate"></p>
+    
     <h2>Will you be in the office today?</h2>
     <label for="name">Select your name:</label>
     <select id="name">
@@ -76,83 +92,7 @@
     
     <h2>Lunch Decision</h2>
     <p id="selectedRestaurant"></p>
-</body>
-</html><!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lunch Decision</title>
-    <script>
-        let people = [];
-        let chosenPerson = null;
-
-        function submitResponse() {
-            const name = document.getElementById("name").value;
-            const inOffice = document.getElementById("inOffice").checked;
-            if (name && inOffice) {
-                people.push(name);
-                updatePotentialSelectors();
-            }
-        }
-
-        function updatePotentialSelectors() {
-            const list = document.getElementById("potentialSelectors");
-            list.innerHTML = "";
-            people.forEach(person => {
-                const li = document.createElement("li");
-                li.textContent = person;
-                list.appendChild(li);
-            });
-        }
-
-        function pickRandomPerson() {
-            if (people.length > 0) {
-                const randomIndex = Math.floor(Math.random() * people.length);
-                chosenPerson = people[randomIndex];
-                document.getElementById("chosenPerson").innerText = `Chosen Person: ${chosenPerson}`;
-                document.getElementById("restaurantInput").style.display = "block";
-            }
-        }
-
-        function submitRestaurant() {
-            const restaurant = document.getElementById("restaurant").value;
-            if (chosenPerson && restaurant) {
-                document.getElementById("selectedRestaurant").innerText = `${chosenPerson} chose: ${restaurant}`;
-            }
-        }
-    </script>
-</head>
-<body>
-    <h2>Will you be in the office today?</h2>
-    <label for="name">Select your name:</label>
-    <select id="name">
-        <option value="Alec">Alec</option>
-        <option value="Chai">Chai</option>
-        <option value="Cole">Cole</option>
-        <option value="Denis">Denis</option>
-        <option value="Hunter">Hunter</option>
-        <option value="Pete">Pete</option>
-    </select>
-    <label>
-        <input type="checkbox" id="inOffice"> Yes
-    </label>
-    <button onclick="submitResponse()">Submit</button>
     
-    <h2>Potential Lunch Selector</h2>
-    <ul id="potentialSelectors"></ul>
-    
-    <h2>Pick a random person</h2>
-    <button onclick="pickRandomPerson()">Pick</button>
-    <p id="chosenPerson"></p>
-    
-    <div id="restaurantInput" style="display: none;">
-        <h2>Enter the restaurant name</h2>
-        <input type="text" id="restaurant" placeholder="Enter restaurant name">
-        <button onclick="submitRestaurant()">Submit</button>
-    </div>
-    
-    <h2>Lunch Decision</h2>
-    <p id="selectedRestaurant"></p>
+    <button onclick="clearAll()">Clear</button>
 </body>
 </html>
