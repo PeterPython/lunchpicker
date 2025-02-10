@@ -4,174 +4,79 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Lunch Decision</title>
-    <script>
-        let people = [];
-        let chosenPerson = null;
-
-        function updateDate() {
-            const today = new Date();
-            const options = { weekday: 'long' };
-            document.getElementById("currentDate").innerText = today.toLocaleDateString(undefined, options);
-        }
-
-        function submitResponse() {
-            const nameSelect = document.getElementById("name");
-            const name = nameSelect.value;
-            const inOffice = document.getElementById("inOffice").checked;
-            
-            if (name && inOffice) {
-                people.push(name);
-                updatePotentialSelectors();
-            }
-            
-            if (name) {
-                nameSelect.remove(nameSelect.selectedIndex);
-            }
-        }
-
-        function updatePotentialSelectors() {
-          const list = document.getElementById("potentialSelectors");
-          list.innerHTML = "";
-
-          if (people.length === 0) {
-              list.style.color = "lightgray";
-              list.style.fontStyle = "italic";
-              list.innerHTML = "Names";
-          } else {
-              list.style.color = "black";
-              list.style.fontStyle = "normal";
-              people.forEach(person => {
-                  const li = document.createElement("li");
-                  li.textContent = person;
-                  li.style.textAlign = "left";
-                  list.appendChild(li);
-              });
-          }
-      }
-
-
-        function pickRandomPerson() {
-            if (people.length > 0) {
-                const randomIndex = Math.floor(Math.random() * people.length);
-                chosenPerson = people[randomIndex];
-                document.getElementById("chosenPerson").innerText = `${chosenPerson}`;
-                document.getElementById("restaurantInput").style.display = "block";
-            }
-        }
-
-        function submitRestaurant() {
-            const restaurant = document.getElementById("restaurant").value;
-            if (chosenPerson && restaurant) {
-                document.getElementById("selectedRestaurant").innerText = `${chosenPerson} chose: ${restaurant}`;
-            }
-        }
-
-        function clearAll() {
-            people = [];
-            chosenPerson = null;
-            document.getElementById("potentialSelectors").innerHTML = "";
-            document.getElementById("chosenPerson").innerText = "";
-            document.getElementById("selectedRestaurant").innerText = "";
-            document.getElementById("restaurantInput").style.display = "none";
-            
-            // Reset dropdown options
-            const nameSelect = document.getElementById("name");
-            nameSelect.innerHTML = `
-                <option value="Alec">Alec</option>
-                <option value="Chai">Chai</option>
-                <option value="Cole">Cole</option>
-                <option value="Denis">Denis</option>
-                <option value="Hunter">Hunter</option>
-                <option value="Pete">Pete</option>
-            `;
-        }
-    </script>
-</head>
-<body onload="updateDate()">
-    <h1 style="text-align: center;">Lunch Lottery</h1>
-    <p style="text-align: center;" id="currentDate"></p>
     
-    <h2>Will you be in the office today?</h2>
-    <label for="name">Select your name:</label>
-    <select id="name">
-        <option value="Alec">Alec</option>
-        <option value="Chai">Chai</option>
-        <option value="Cole">Cole</option>
-        <option value="Denis">Denis</option>
-        <option value="Hunter">Hunter</option>
-        <option value="Pete">Pete</option>
-    </select>
-    <label>
-        <input type="radio" name="officeStatus" id="inOffice"> Yes
-    </label>
-    <label>
-        <input type="radio" name="officeStatus" id="notInOffice"> No
-    </label>
-    <button onclick="submitResponse()">Submit</button>
-    
-    <h2>In office</h2>
-    <ul id="potentialSelectors" style="color: lightgray; font-style: italic; list-style-type: none; padding: 0;">Names</ul>
-    
-    <h2>Restaurant selector</h2>
-    <button onclick="pickRandomPerson()">Pick</button>
-    <p id="chosenPerson"></p>
-    
-    <div id="restaurantInput" style="display: none;">
-        <h2>Restaurant name</h2>
-        <select id="restaurant" onchange="handleRestaurantSelection()">
-            <option value="">Choose a restaurant</option>
-            <option value="Pizza Place">Pizza Place</option>
-            <option value="Sushi Spot">Sushi Spot</option>
-            <option value="Burger Joint">Burger Joint</option>
-            <option value="Choose New">Choose new restaurant</option>
-        </select>
-        <script>
-            function handleRestaurantSelection() {
-                const select = document.getElementById("restaurant");
-                if (select.value === "Choose New") {
-                    const newRestaurant = prompt("Enter the restaurant name:");
-                    if (newRestaurant) {
-                        const newOption = document.createElement("option");
-                        newOption.value = newRestaurant;
-                        newOption.textContent = newRestaurant;
-                        select.insertBefore(newOption, select.lastElementChild);
-                        select.value = newRestaurant;
-                    } else {
-                        select.value = "";
-                    }
+    <!-- Firebase SDK -->
+    <script type="module">
+        // Import Firebase SDKs
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.3.0/firebase-app.js";
+        import { getDatabase, ref, push, get, child } from "https://www.gstatic.com/firebasejs/11.3.0/firebase-database.js";
+
+        // Your Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyAaihPMwzCZEYQV_pUaffWKqIqxubAlzkc",
+            authDomain: "lunch-beda3.firebaseapp.com",
+            projectId: "lunch-beda3",
+            storageBucket: "lunch-beda3.firebasestorage.app",
+            messagingSenderId: "888920791757",
+            appId: "1:888920791757:web:848f5a9ce1602e125c2784",
+            measurementId: "G-CDDYWJDDE6",
+            databaseURL: "https://lunch-beda3-default-rtdb.firebaseio.com/" // Added database URL
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        // Function to update restaurant dropdown from Firebase
+        function updateRestaurantDropdown() {
+            const select = document.getElementById("restaurant");
+            select.innerHTML = "";
+
+            get(child(ref(db), "restaurants")).then((snapshot) => {
+                if (snapshot.exists()) {
+                    snapshot.forEach((childSnapshot) => {
+                        const restaurant = childSnapshot.val();
+                        const option = document.createElement("option");
+                        option.value = restaurant;
+                        option.textContent = restaurant;
+                        select.appendChild(option);
+                    });
                 }
-            }
-        </script>
-        <button onclick="submitRestaurant()">Submit</button>
-    </div>
-    
-    <h2>Lunch Decision</h2>
-    <select id="restaurant" onchange="handleRestaurantSelection()">
-        <option value="">Choose a restaurant</option>
-        <option value="Pizza Place">Pizza Place</option>
-        <option value="Sushi Spot">Sushi Spot</option>
-        <option value="Burger Joint">Burger Joint</option>
-        <option value="Choose New">Choose new restaurant</option>
-    </select>
-    <script>
+
+                // Add "Choose New" option
+                const newOption = document.createElement("option");
+                newOption.value = "Choose New";
+                newOption.textContent = "Choose new restaurant";
+                select.appendChild(newOption);
+            });
+        }
+
+        // Function to handle adding a new restaurant
         function handleRestaurantSelection() {
             const select = document.getElementById("restaurant");
             if (select.value === "Choose New") {
                 const newRestaurant = prompt("Enter the restaurant name:");
                 if (newRestaurant) {
-                    const newOption = document.createElement("option");
-                    newOption.value = newRestaurant;
-                    newOption.textContent = newRestaurant;
-                    select.insertBefore(newOption, select.lastElementChild);
+                    push(ref(db, "restaurants"), newRestaurant).then(() => updateRestaurantDropdown());
                     select.value = newRestaurant;
                 } else {
                     select.value = "";
                 }
             }
         }
+
+        // Load restaurants when page loads
+        document.addEventListener("DOMContentLoaded", updateRestaurantDropdown);
     </script>
-    <p id="selectedRestaurant"></p>
+</head>
+<body>
+    <h1 style="text-align: center;">Lunch Lottery</h1>
+    <p style="text-align: center;" id="currentDate"></p>
     
-    <button onclick="clearAll()">Clear</button>
+    <h2>Restaurant Selector</h2>
+    <select id="restaurant" onchange="handleRestaurantSelection()"></select>
+    
+    <h2>Lunch Decision</h2>
+    <p id="selectedRestaurant"></p>
 </body>
 </html>
