@@ -31,12 +31,16 @@
 
         function updatePotentialSelectors() {
             const list = document.getElementById("potentialSelectors");
+            list.style.color = "black";
+            list.style.fontStyle = "normal";
             list.innerHTML = "";
             people.forEach(person => {
                 const li = document.createElement("li");
                 li.textContent = person;
+                li.style.textAlign = "left";
                 list.appendChild(li);
             });
+        });
         }
 
         function pickRandomPerson() {
