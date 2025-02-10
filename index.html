@@ -10,7 +10,8 @@
 
         function updateDate() {
             const today = new Date();
-            document.getElementById("currentDate").innerText = today.toDateString();
+            const options = { weekday: 'long' };
+            document.getElementById("currentDate").innerText = today.toLocaleDateString(undefined, options);
         }
 
         function submitResponse() {
@@ -74,6 +75,9 @@
     </select>
     <label>
         <input type="checkbox" id="inOffice"> Yes
+    </label>
+    <label>
+        <input type="checkbox" id="notInOffice"> No
     </label>
     <button onclick="submitResponse()">Submit</button>
     
