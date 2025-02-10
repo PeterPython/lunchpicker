@@ -18,9 +18,8 @@
             const nameSelect = document.getElementById("name");
             const name = nameSelect.value;
             const inOffice = document.getElementById("inOffice").checked;
-            const notInOffice = document.getElementById("notInOffice").checked;
             
-            if (name && inOffice && !notInOffice) {
+            if (name && inOffice) {
                 people.push(name);
                 updatePotentialSelectors();
             }
@@ -92,10 +91,10 @@
         <option value="Pete">Pete</option>
     </select>
     <label>
-        <input type="checkbox" id="inOffice"> Yes
+        <input type="radio" name="officeStatus" id="inOffice"> Yes
     </label>
     <label>
-        <input type="checkbox" id="notInOffice"> No
+        <input type="radio" name="officeStatus" id="notInOffice"> No
     </label>
     <button onclick="submitResponse()">Submit</button>
     
