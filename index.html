@@ -54,7 +54,7 @@
             if (people.length > 0) {
                 const randomIndex = Math.floor(Math.random() * people.length);
                 chosenPerson = people[randomIndex];
-                document.getElementById("chosenPerson").innerText = `Chosen Person: ${chosenPerson}`;
+                document.getElementById("chosenPerson").innerText = `${chosenPerson}`;
                 document.getElementById("restaurantInput").style.display = "block";
             }
         }
@@ -109,10 +109,10 @@
     </label>
     <button onclick="submitResponse()">Submit</button>
     
-    <h2>In Office</h2>
-    <ul id="potentialSelectors" style="color: lightgray; font-style: italic;">Names</ul>
+    <h2>In office</h2>
+    <ul id="potentialSelectors" style="color: lightgray; font-style: italic; list-style-type: none; padding: 0;">Names</ul>
     
-    <h2>Pick a random person</h2>
+    <h2>Pick restaurant selector</h2>
     <button onclick="pickRandomPerson()">Pick</button>
     <p id="chosenPerson"></p>
     
