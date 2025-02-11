@@ -70,10 +70,10 @@
     // Global flag to ensure auto-selection happens only once.
     let autoSelectionMade = false;
 
-    // Use the same persons array for attendance and the roulette wheel.
+    // Use the same persons array for attendance and other parts.
+    // (This remains available if you need the full list.)
     const persons = ["Alec", "Chai", "Cole", "Denis", "Hunter", "Pete"];
-    // Expose persons globally so that the non-module script (roulette code) can access it.
-    window.persons = persons;
+    window.persons = persons; // Expose globally if needed.
 
     /* ====================================
        Clock & Auto-Selection Functionality
@@ -109,7 +109,6 @@
         const selected = snapshot.val();
         const selectedPersonElem = document.getElementById("selectedPerson");
         if (selected && selected !== "???") {
-          // Display the picked person's name in bold with an exclamation point.
           selectedPersonElem.innerHTML = `<b>${selected}!</b>`;
         } else {
           selectedPersonElem.innerHTML = `<b>???</b>`;
@@ -170,11 +169,12 @@
       });
     }
 
+    // This function picks a random person from those with attendance marked "yes"
     function pickRandomPerson() {
       const rows = document.querySelectorAll("#attendanceTable tbody tr");
       const inOfficeNames = [];
       rows.forEach(row => {
-        const name = row.cells[0].textContent;
+        const name = row.cells[0].textContent.trim();
         const yesRadio = row.querySelector(`input[name="officeStatus_${name}"][value="yes"]`);
         if (yesRadio && yesRadio.checked) {
           inOfficeNames.push(name);
@@ -217,7 +217,7 @@
             select.appendChild(option);
           });
         }
-        // Append the extra option for adding a new restaurant.
+        // Append an extra option for adding a new restaurant.
         const chooseNewOption = document.createElement("option");
         chooseNewOption.value = "Choose New";
         chooseNewOption.textContent = "Choose new restaurant";
@@ -394,23 +394,45 @@
   
   <!-- Roulette Wheel Script (Non-module) -->
   <script>
-    // Roulette wheel integration:
+    // This function returns the names of attendees who have clicked "Yes"
+    function getAttendingNames() {
+      const rows = document.querySelectorAll("#attendanceTable tbody tr");
+      const names = [];
+      rows.forEach(row => {
+        const name = row.cells[0].textContent.trim();
+        const yesRadio = row.querySelector(`input[name="officeStatus_${name}"][value="yes"]`);
+        if (yesRadio && yesRadio.checked) {
+          names.push(name);
+        }
+      });
+      return names;
+    }
+    
     const rouletteCanvas = document.getElementById("rouletteWheel");
     const rouletteCtx = rouletteCanvas.getContext("2d");
     const rouletteCenterX = rouletteCanvas.width / 2;
     const rouletteCenterY = rouletteCanvas.height / 2;
     const rouletteRadius = Math.min(rouletteCenterX, rouletteCenterY) - 20;
-    // Use the global persons array:
-    const rouletteSectors = window.persons.length;
-    const rouletteSectorAngle = 2 * Math.PI / rouletteSectors;
     
     let rouletteCurrentAngle = 0;
+    let currentAttendees = []; // Will store the list of names for the current spin.
+    let currentSectorAngle = 0;
     
-    function drawRouletteWheel() {
+    // Draws the roulette wheel using the provided list of names.
+    function drawRouletteWheel(attendees) {
       rouletteCtx.clearRect(0, 0, rouletteCanvas.width, rouletteCanvas.height);
-      for (let i = 0; i < rouletteSectors; i++) {
-        const startAngle = rouletteCurrentAngle + i * rouletteSectorAngle;
-        const endAngle = startAngle + rouletteSectorAngle;
+      if (attendees.length === 0) {
+        rouletteCtx.font = "20px Arial";
+        rouletteCtx.textAlign = "center";
+        rouletteCtx.fillText("No attendees selected", rouletteCenterX, rouletteCenterY);
+        return;
+      }
+      const sectors = attendees.length;
+      const sectorAngle = 2 * Math.PI / sectors;
+      
+      for (let i = 0; i < sectors; i++) {
+        const startAngle = rouletteCurrentAngle + i * sectorAngle;
+        const endAngle = startAngle + sectorAngle;
         rouletteCtx.fillStyle = i % 2 === 0 ? "#ffdd57" : "#ff6f69";
         rouletteCtx.beginPath();
         rouletteCtx.moveTo(rouletteCenterX, rouletteCenterY);
@@ -418,31 +440,48 @@
         rouletteCtx.closePath();
         rouletteCtx.fill();
         
-        // Draw the person's name in the sector.
+        // Draw the person's name within the sector.
         rouletteCtx.save();
         rouletteCtx.translate(rouletteCenterX, rouletteCenterY);
-        rouletteCtx.rotate(startAngle + rouletteSectorAngle / 2);
+        rouletteCtx.rotate(startAngle + sectorAngle / 2);
         rouletteCtx.textAlign = "right";
         rouletteCtx.fillStyle = "#000";
         rouletteCtx.font = "16px Arial";
-        rouletteCtx.fillText(window.persons[i], rouletteRadius - 10, 10);
+        rouletteCtx.fillText(attendees[i], rouletteRadius - 10, 10);
         rouletteCtx.restore();
       }
     }
     
-    drawRouletteWheel();
+    // Redraw the wheel using the current attendance list.
+    function updateRouletteWheel() {
+      const attendees = getAttendingNames();
+      drawRouletteWheel(attendees);
+    }
     
+    // Initially draw the wheel.
+    updateRouletteWheel();
+    
+    // Spins the roulette wheel using only the names of those who clicked "Yes".
     function spinRouletteWheel(duration = 5000) {
+      const attendees = getAttendingNames();
+      if (attendees.length === 0) {
+        alert("No attendees selected");
+        return;
+      }
+      currentAttendees = attendees;
+      const sectors = currentAttendees.length;
+      currentSectorAngle = 2 * Math.PI / sectors;
+      
       const startTime = performance.now();
       const initialAngle = rouletteCurrentAngle;
-      const totalSpins = 10; // Total full rotations.
+      const totalSpins = 10; // Total full rotations
       
       function animateRoulette(now) {
         const elapsed = now - startTime;
         const progress = Math.min(elapsed / duration, 1);
         const easedProgress = 1 - Math.pow(1 - progress, 3);
         rouletteCurrentAngle = initialAngle + easedProgress * totalSpins * 2 * Math.PI;
-        drawRouletteWheel();
+        drawRouletteWheel(currentAttendees);
         if (progress < 1) {
           requestAnimationFrame(animateRoulette);
         } else {
@@ -450,17 +489,21 @@
           const normalizedAngle = rouletteCurrentAngle % (2 * Math.PI);
           // Adjust for the pointer at the top (π/2).
           const pointerAngle = (2 * Math.PI + Math.PI/2 - normalizedAngle) % (2 * Math.PI);
-          const winnerIndex = Math.floor(pointerAngle / rouletteSectorAngle);
-          const winner = window.persons[winnerIndex];
+          const winnerIndex = Math.floor(pointerAngle / currentSectorAngle);
+          const winner = currentAttendees[winnerIndex];
           alert("Winner: " + winner);
         }
       }
       requestAnimationFrame(animateRoulette);
     }
     
+    // Start a spin when the roulette canvas is clicked.
     rouletteCanvas.addEventListener("click", function() {
       spinRouletteWheel(5000);
     });
+    
+    // Optionally, update the roulette wheel periodically (in case attendance changes).
+    setInterval(updateRouletteWheel, 2000);
   </script>
 </body>
 </html>
