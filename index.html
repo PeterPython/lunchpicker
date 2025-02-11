@@ -37,11 +37,10 @@
       border-radius: 50%;
       display: block;
     }
-    /* Pointer styling: Positioned so its tip is on the circle's border and points inward */
+    /* Pointer styling: Positioned on the edge so its tip is exactly on the circle's border and points inward.
+       Added "pointer-events: none;" so that clicks pass through to the canvas. */
     #pointer {
       position: absolute;
-      /* With a 400x400 canvas and a circle radius of (200-20=180), the top edge is at 20px.
-         A triangle with a 30px border-bottom, when set to top: -10px, will have its tip at 20px. */
       top: -10px;
       left: 50%;
       transform: translateX(-50%);
@@ -50,6 +49,7 @@
       border-left: 20px solid transparent;
       border-right: 20px solid transparent;
       border-bottom: 30px solid #333;
+      pointer-events: none;
     }
   </style>
   
@@ -75,27 +75,27 @@
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
 
-    // Expose Firebase functions & db to global window for non‑module scripts.
+    // Expose Firebase functions & db to the global window for non‑module scripts.
     window.db = db;
     window.ref = ref;
     window.set = set;
     window.onValue = onValue;
 
-    // Global flag for auto-selection
+    // Global flag for auto-selection.
     let autoSelectionMade = false;
 
     // List of names (for reference)
     const persons = ["Alec", "Chai", "Cole", "Denis", "Hunter", "Pete"];
     window.persons = persons;
 
-    // Update clock function
+    // Update clock function.
     function updateClock() {
       const clockElement = document.getElementById("clock");
       if (!clockElement) return;
       const options = { timeZone: 'America/New_York', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true };
       const timeString = new Intl.DateTimeFormat('en-US', options).format(new Date());
       clockElement.textContent = "Time: " + timeString;
-
+      
       const parts = timeString.split(':');
       const hourPart = parts[0].replace(/\D/g, '');
       const hour = parseInt(hourPart, 10);
@@ -113,7 +113,7 @@
       });
     }
 
-    // Update cell background for the attendance table.
+    // Update cell background in the attendance table.
     function updateCellBackground(name, selected) {
       const cell = document.getElementById("nameCell_" + name);
       if (cell) {
@@ -135,14 +135,14 @@
         set(ref(db, "officeAttendance/" + name), name)
           .then(() => {
             updateCellBackground(name, "yes");
-            updateRouletteWheel(); // update roulette wheel immediately
+            updateRouletteWheel(); // Update roulette immediately.
           })
           .catch(error => console.error("Error updating attendance for " + name + ":", error));
       } else if (selected === "no") {
         remove(ref(db, "officeAttendance/" + name))
           .then(() => {
             updateCellBackground(name, "no");
-            updateRouletteWheel(); // update roulette wheel immediately
+            updateRouletteWheel(); // Update roulette immediately.
           })
           .catch(error => console.error("Error removing attendance for " + name + ":", error));
       }
