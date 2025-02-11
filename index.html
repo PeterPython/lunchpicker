@@ -28,6 +28,7 @@
        Office Attendance Functions
        ============================== */
 
+    // Submit office attendance response (only if "yes" is selected)
     function submitResponse() {
       const nameSelect = document.getElementById("name");
       const name = nameSelect.value;
@@ -44,6 +45,7 @@
       }
     }
 
+    // Attach a realtime listener to update the "In Office" list.
     function attachOfficeAttendanceListener() {
       const officeAttendanceRef = ref(db, "officeAttendance");
       onValue(officeAttendanceRef, (snapshot) => {
@@ -61,6 +63,7 @@
       });
     }
 
+    // Pick a random person from the "In Office" list.
     function pickRandomPerson() {
       const listItems = document.querySelectorAll("#officeList li");
       const selectedPersonElem = document.getElementById("selectedPerson");
@@ -72,28 +75,25 @@
       }
     }
 
-    function clearAll() {
+    // Clears only the office attendance data.
+    function clearOfficeData() {
       remove(ref(db, "officeAttendance"))
         .then(() => console.log("Office attendance cleared"))
         .catch((error) => console.error("Error clearing office attendance:", error));
-      remove(ref(db, "restaurants"))
-        .then(() => console.log("Restaurants cleared"))
-        .catch((error) => console.error("Error clearing restaurants:", error));
       document.getElementById("selectedPerson").textContent = "";
-      document.getElementById("selectedRestaurant").textContent = "";
     }
 
     /* ==============================
        Restaurant Selector Functions
        ============================== */
 
-    // This listener populates the restaurant dropdown from Firebase.
+    // Attach a realtime listener to update the restaurant dropdown.
     function attachRestaurantListener() {
       const restaurantRef = ref(db, "restaurants");
       onValue(restaurantRef, (snapshot) => {
         const select = document.getElementById("restaurant");
         if (!select) return;
-        // Preserve current selection if any.
+        // Preserve the current selection, if any.
         const currentValue = select.value;
         select.innerHTML = "";
         if (snapshot.exists()){
@@ -111,7 +111,7 @@
         newOption.textContent = "Choose new restaurant";
         select.appendChild(newOption);
 
-        // If no restaurants exist (only one option), automatically trigger new restaurant input.
+        // If no restaurants exist (i.e. only one option is present), automatically trigger the new restaurant input.
         if (select.options.length === 1) {
           select.value = "Choose New";
           handleRestaurantSelection();
@@ -121,7 +121,8 @@
       });
     }
 
-    // When the dropdown changes, this function handles showing an input to add a new restaurant.
+    // Handle changes in the restaurant dropdown.
+    // When "Choose New" is selected, display an input field and an Add button.
     function handleRestaurantSelection() {
       const select = document.getElementById("restaurant");
       const selectedRestaurantElem = document.getElementById("selectedRestaurant");
@@ -130,7 +131,7 @@
         console.error("New restaurant container not found.");
         return;
       }
-      // Clear any existing input/button from previous selections.
+      // Clear any existing input/button.
       newRestaurantContainer.innerHTML = "";
 
       if (select.value === "Choose New") {
@@ -151,9 +152,9 @@
             push(ref(db, "restaurants"), newRestaurant)
               .then(() => {
                 selectedRestaurantElem.textContent = newRestaurant;
-                // Clear the container after adding.
+                // Clear the input/button container.
                 newRestaurantContainer.innerHTML = "";
-                // Update the dropdown's value.
+                // Update the dropdown's selection.
                 select.value = newRestaurant;
               })
               .catch((error) => console.error("Error adding new restaurant:", error));
@@ -162,26 +163,26 @@
           }
         };
 
-        // Append the input and button to the dedicated container.
+        // Append the input and button to the container.
         newRestaurantContainer.appendChild(newInput);
         newRestaurantContainer.appendChild(addButton);
         newInput.focus();
       } else {
-        // If a regular restaurant is selected, simply update the display.
+        // For any other selection, simply display the selected restaurant.
         selectedRestaurantElem.textContent = select.value;
       }
     }
 
-    // When the DOM is ready, attach the realtime listeners.
+    // When the DOM is fully loaded, attach the realtime listeners.
     document.addEventListener("DOMContentLoaded", () => {
       attachOfficeAttendanceListener();
       attachRestaurantListener();
     });
 
-    // Expose functions for inline event handling.
+    // Expose functions to the global scope for inline event handling.
     window.submitResponse = submitResponse;
     window.pickRandomPerson = pickRandomPerson;
-    window.clearAll = clearAll;
+    window.clearOfficeData = clearOfficeData;
     window.handleRestaurantSelection = handleRestaurantSelection;
   </script>
 </head>
@@ -215,15 +216,15 @@
   <button onclick="pickRandomPerson()">Pick</button>
   <p id="selectedPerson"></p>
   
+  <!-- Clear Office Data Section (moved above the restaurant section) -->
+  <h2>Clear Office Data</h2>
+  <button onclick="clearOfficeData()">Clear Office Data</button>
+  
   <!-- Restaurant Selector Section -->
   <h2>Restaurant Selector</h2>
   <select id="restaurant" onchange="handleRestaurantSelection()"></select>
   <p id="selectedRestaurant"></p>
-  <!-- Container where the new restaurant input and Add button will appear -->
+  <!-- Container for the new restaurant input field and Add button -->
   <div id="newRestaurantContainer"></div>
-  
-  <!-- Button to clear all data (for testing) -->
-  <h2>Clear All Data</h2>
-  <button onclick="clearAll()">Clear All</button>
 </body>
 </html>
