@@ -34,7 +34,7 @@
       const clockElement = document.getElementById("clock");
       const options = { timeZone: 'America/New_York', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
       const timeString = new Intl.DateTimeFormat('en-US', options).format(new Date());
-      // Remove the "ET" text; display just "Time:"
+      // Display without "ET" prefix; just "Time:"
       clockElement.textContent = "Time: " + timeString;
       
       const parts = timeString.split(':');
@@ -242,9 +242,6 @@
         newRestaurantContainer.appendChild(newInput);
         newRestaurantContainer.appendChild(addButton);
         newInput.focus();
-      } else if (select.value === "Pick Random") {
-          console.log("User selected 'Pick Random'. Calling pickRandomRestaurant().");
-          pickRandomRestaurant();
       }
     }
 
@@ -273,6 +270,7 @@
       startClock();
     });
 
+    // Expose functions for inline event handling.
     window.updateAttendanceFor = updateAttendanceFor;
     window.attachOfficeAttendanceListener = attachOfficeAttendanceListener;
     window.attachRestaurantListener = attachRestaurantListener;
@@ -293,7 +291,7 @@
     <thead>
       <tr>
         <th>Name</th>
-        <th>In office?</th>
+        <th>Eating lunch at the office?</th>
       </tr>
     </thead>
     <tbody>
@@ -369,7 +367,7 @@
   <!-- Add white space after the table -->
   <div style="height: 20px;"></div>
   
-  <!-- Section for picking a random person (persistent selection) -->
+  <!-- Section for picking a random person from those marked "Yes" -->
   <button onclick="pickRandomPerson()">Choose a person</button>
   <p id="selectedPerson"></p>
   
@@ -379,8 +377,9 @@
   <!-- Restaurant Section -->
   <h2>Pick a restaurant</h2>
   <select id="restaurant" onchange="handleRestaurantSelection()"></select>
-  <!-- The redundant text element showing the restaurant selection has been removed -->
+  <!-- Removed the redundant text element for restaurant selection -->
   <div id="newRestaurantContainer"></div>
-  <button onclick="pickRandomRestaurant()">Pick random restaurant</button>
+  <!-- The "Pick random restaurant" button has been removed -->
+  
 </body>
 </html>
