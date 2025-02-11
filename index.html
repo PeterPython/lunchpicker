@@ -32,13 +32,16 @@
        ==================================== */
     function updateClock() {
       const clockElement = document.getElementById("clock");
-      const options = { timeZone: 'America/New_York', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
+      // Use hour12: true to get AM/PM format.
+      const options = { timeZone: 'America/New_York', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true };
       const timeString = new Intl.DateTimeFormat('en-US', options).format(new Date());
-      // Display without "ET"; just "Time:"
       clockElement.textContent = "Time: " + timeString;
       
       const parts = timeString.split(':');
-      const hour = parseInt(parts[0], 10);
+      // Remove potential AM/PM text for hour parsing. We assume the first two characters represent the hour.
+      const hourPart = parts[0].replace(/\D/g, ''); // Remove non-digit characters.
+      const hour = parseInt(hourPart, 10);
+      
       // If it's 10am or later and no one is selected, auto-pick a random person.
       if (hour >= 10 && !autoSelectionMade) {
         const selectedPersonElem = document.getElementById("selectedPerson");
@@ -59,7 +62,8 @@
         const selected = snapshot.val();
         const selectedPersonElem = document.getElementById("selectedPerson");
         if (selected) {
-          selectedPersonElem.textContent = selected;
+          // Display the picked person's name in bold with an exclamation point.
+          selectedPersonElem.innerHTML = `<b>${selected}!</b>`;
         } else {
           selectedPersonElem.textContent = "No one is in the office.";
         }
@@ -284,7 +288,9 @@
   <h1>Lunch!</h1>
   
   <!-- Clock Display -->
-  <div id="clock" style="font-weight: bold; margin-bottom: 10px;"></div>
+  <div id="clock" style="font-weight: bold; margin-bottom: 5px;"></div>
+  <!-- Deadline Line -->
+  <div id="deadline" style="font-weight: bold; margin-bottom: 10px;">Deadline: 10:00 AM</div>
   
   <!-- Office Attendance Table (heading removed) -->
   <table id="attendanceTable" border="1" cellpadding="5">
@@ -364,7 +370,7 @@
     </tbody>
   </table>
   
-  <!-- Add white space after the table -->
+  <!-- White space after the table -->
   <div style="height: 20px;"></div>
   
   <!-- Section for picking a random person (persistent selection) -->
@@ -377,8 +383,8 @@
   <!-- Restaurant Section -->
   <h2>Pick a restaurant</h2>
   <select id="restaurant" onchange="handleRestaurantSelection()"></select>
-  <!-- The redundant text element for restaurant selection has been removed -->
+  <!-- Add white space between the dropdown and the new restaurant field -->
+  <div style="height: 20px;"></div>
   <div id="newRestaurantContainer"></div>
-  <!-- Note: The separate "Pick random restaurant" button has been removed -->
 </body>
 </html>
