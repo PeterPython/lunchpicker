@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <title>Lunch!</title>
   <style>
-    /* Ensuring h2 headings and the selected person text are 2em */
+    /* Ensure h2 headings and the selected person text are 2em */
     h2, #selectedPerson {
       font-size: 2em;
     }
@@ -38,6 +38,7 @@
        ==================================== */
     function updateClock() {
       const clockElement = document.getElementById("clock");
+      // Use hour12: true for AM/PM format.
       const options = { timeZone: 'America/New_York', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true };
       const timeString = new Intl.DateTimeFormat('en-US', options).format(new Date());
       clockElement.textContent = "Time: " + timeString;
@@ -65,8 +66,8 @@
       onValue(lunchSelectionRef, (snapshot) => {
         const selected = snapshot.val();
         const selectedPersonElem = document.getElementById("selectedPerson");
+        // If a name is stored (and it's not the fallback), display it with an exclamation point.
         if (selected && selected !== "???") {
-          // Display the picked person's name in bold with an exclamation point.
           selectedPersonElem.innerHTML = `<b>${selected}!</b>`;
         } else {
           selectedPersonElem.innerHTML = `<b>???</b>`;
@@ -92,6 +93,7 @@
       }
     }
 
+    // Called when a radio button for a specific person is changed.
     function updateAttendanceFor(name) {
       const radios = document.getElementsByName("officeStatus_" + name);
       let selected = "";
@@ -118,6 +120,7 @@
       }
     }
 
+    // Realtime listener to update the attendance table based on Firebase data.
     function attachOfficeAttendanceListener() {
       const officeAttendanceRef = ref(db, "officeAttendance");
       onValue(officeAttendanceRef, (snapshot) => {
@@ -138,6 +141,8 @@
       });
     }
 
+    // Picks a random person from those marked "Yes" in the attendance table
+    // and persists that selection in Firebase.
     function pickRandomPerson() {
       const rows = document.querySelectorAll("#attendanceTable tbody tr");
       const inOfficeNames = [];
@@ -185,17 +190,12 @@
             select.appendChild(option);
           });
         }
-        // Always add extra options.
+        // Always add the extra option for adding a new restaurant.
         const chooseNewOption = document.createElement("option");
         chooseNewOption.value = "Choose New";
         chooseNewOption.textContent = "Choose new restaurant";
         select.appendChild(chooseNewOption);
-
-        const pickRandomOption = document.createElement("option");
-        pickRandomOption.value = "Pick Random";
-        pickRandomOption.textContent = "Pick random restaurant to the dropdown";
-        select.appendChild(pickRandomOption);
-
+        
         if (!currentValue || !Array.from(select.options).some(opt => opt.value === currentValue)) {
           select.value = "Choose New";
         } else {
@@ -204,8 +204,6 @@
         console.log("Restaurant dropdown updated. Current selection:", select.value);
         if (select.value === "Choose New") {
           handleRestaurantSelection();
-        } else if (select.value === "Pick Random") {
-          pickRandomRestaurant();
         }
       });
     }
@@ -249,20 +247,6 @@
       }
     }
 
-    function pickRandomRestaurant() {
-      const select = document.getElementById("restaurant");
-      if (!select) return;
-      const validOptions = Array.from(select.options).filter(opt => opt.value !== "Choose New" && opt.value !== "Pick Random");
-      if (validOptions.length === 0) {
-        alert("No restaurants available to pick.");
-        return;
-      }
-      const randomIndex = Math.floor(Math.random() * validOptions.length);
-      const randomRestaurant = validOptions[randomIndex].value;
-      select.value = randomRestaurant;
-      console.log("Random restaurant picked:", randomRestaurant);
-    }
-
     function startClock() {
       setInterval(updateClock, 1000);
     }
@@ -279,7 +263,6 @@
     window.attachOfficeAttendanceListener = attachOfficeAttendanceListener;
     window.attachRestaurantListener = attachRestaurantListener;
     window.handleRestaurantSelection = handleRestaurantSelection;
-    window.pickRandomRestaurant = pickRandomRestaurant;
     window.pickRandomPerson = pickRandomPerson;
     window.clearOfficeData = clearOfficeData;
   </script>
