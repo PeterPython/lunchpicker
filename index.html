@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <title>Lunch!</title>
   <style>
-    /* Ensure that all h2 headings and the selected person text are the same size */
+    /* Ensure h2 headings and the selected person text are 2em */
     h2, #selectedPerson {
       font-size: 2em;
     }
@@ -38,9 +38,9 @@
        ==================================== */
     function updateClock() {
       const clockElement = document.getElementById("clock");
+      // Use hour12: true for AM/PM format.
       const options = { timeZone: 'America/New_York', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true };
       const timeString = new Intl.DateTimeFormat('en-US', options).format(new Date());
-      // Display time with "Time:" prefix.
       clockElement.textContent = "Time: " + timeString;
       
       const parts = timeString.split(':');
@@ -66,10 +66,11 @@
       onValue(lunchSelectionRef, (snapshot) => {
         const selected = snapshot.val();
         const selectedPersonElem = document.getElementById("selectedPerson");
-        // If a name is stored and it's not the fallback, display it with an exclamation point.
+        // If a name is stored (and it's not the fallback), display it with an exclamation point.
         if (selected && selected !== "???") {
           selectedPersonElem.innerHTML = `<b>${selected}!</b>`;
         } else {
+          // Fallback text: "???" (without an exclamation point)
           selectedPersonElem.innerHTML = `<b>???</b>`;
         }
       });
@@ -93,7 +94,6 @@
       }
     }
 
-    // Called when a radio button for a specific person is changed.
     function updateAttendanceFor(name) {
       const radios = document.getElementsByName("officeStatus_" + name);
       let selected = "";
@@ -120,7 +120,6 @@
       }
     }
 
-    // Realtime listener to update the attendance table based on Firebase data.
     function attachOfficeAttendanceListener() {
       const officeAttendanceRef = ref(db, "officeAttendance");
       onValue(officeAttendanceRef, (snapshot) => {
@@ -141,8 +140,6 @@
       });
     }
 
-    // Picks a random person from those marked "Yes" in the attendance table
-    // and persists that selection in Firebase.
     function pickRandomPerson() {
       const rows = document.querySelectorAll("#attendanceTable tbody tr");
       const inOfficeNames = [];
@@ -179,8 +176,15 @@
       onValue(restaurantRef, (snapshot) => {
         const select = document.getElementById("restaurant");
         if (!select) return;
-        const currentValue = select.value;
+        // Clear existing options.
         select.innerHTML = "";
+        // Add a default prompt option at the top.
+        const defaultOption = document.createElement("option");
+        defaultOption.value = "PICK A RESTAURANT";
+        defaultOption.textContent = "PICK A RESTAURANT";
+        select.appendChild(defaultOption);
+        
+        // Append restaurant options from Firebase.
         if (snapshot.exists()) {
           snapshot.forEach((childSnapshot) => {
             const restaurant = childSnapshot.val();
@@ -190,22 +194,19 @@
             select.appendChild(option);
           });
         }
-        // Always add extra options.
-        const chooseNewOption = document.createElement("option");
-        chooseNewOption.value = "Choose New";
-        chooseNewOption.textContent = "Choose new restaurant";
-        select.appendChild(chooseNewOption);
-
+        // Add extra options.
+        const addNewOption = document.createElement("option");
+        addNewOption.value = "Choose New";
+        addNewOption.textContent = "Add a new restaurant";
+        select.appendChild(addNewOption);
+        
         const pickRandomOption = document.createElement("option");
         pickRandomOption.value = "Pick Random";
         pickRandomOption.textContent = "Pick random restaurant to the dropdown";
         select.appendChild(pickRandomOption);
-
-        if (!currentValue || !Array.from(select.options).some(opt => opt.value === currentValue)) {
-          select.value = "Choose New";
-        } else {
-          select.value = currentValue;
-        }
+        
+        // Set the default selected value to the prompt.
+        select.value = "PICK A RESTAURANT";
         console.log("Restaurant dropdown updated. Current selection:", select.value);
         if (select.value === "Choose New") {
           handleRestaurantSelection();
@@ -257,7 +258,7 @@
     function pickRandomRestaurant() {
       const select = document.getElementById("restaurant");
       if (!select) return;
-      const validOptions = Array.from(select.options).filter(opt => opt.value !== "Choose New" && opt.value !== "Pick Random");
+      const validOptions = Array.from(select.options).filter(opt => opt.value !== "PICK A RESTAURANT" && opt.value !== "Choose New" && opt.value !== "Pick Random");
       if (validOptions.length === 0) {
         alert("No restaurants available to pick.");
         return;
