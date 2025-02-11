@@ -32,22 +32,20 @@
        ==================================== */
     function updateClock() {
       const clockElement = document.getElementById("clock");
-      // Use hour12: true to get AM/PM format.
       const options = { timeZone: 'America/New_York', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true };
       const timeString = new Intl.DateTimeFormat('en-US', options).format(new Date());
+      // Display the time in AM/PM format with "Time:" prefix.
       clockElement.textContent = "Time: " + timeString;
       
       const parts = timeString.split(':');
-      // Remove potential AM/PM text for hour parsing. We assume the first two characters represent the hour.
-      const hourPart = parts[0].replace(/\D/g, ''); // Remove non-digit characters.
+      const hourPart = parts[0].replace(/\D/g, '');
       const hour = parseInt(hourPart, 10);
-      
       // If it's 10am or later and no one is selected, auto-pick a random person.
       if (hour >= 10 && !autoSelectionMade) {
         const selectedPersonElem = document.getElementById("selectedPerson");
-        if (!selectedPersonElem.textContent ||
-            selectedPersonElem.textContent.trim() === "" ||
-            selectedPersonElem.textContent.includes("No one")) {
+        if (!selectedPersonElem.innerText ||
+            selectedPersonElem.innerText.trim() === "" ||
+            selectedPersonElem.innerText.includes("Who will be the winner?")) {
           console.log("Auto selecting random person because it's 10am or later and no one is selected.");
           pickRandomPerson();
           autoSelectionMade = true;
@@ -65,7 +63,7 @@
           // Display the picked person's name in bold with an exclamation point.
           selectedPersonElem.innerHTML = `<b>${selected}!</b>`;
         } else {
-          selectedPersonElem.textContent = "No one is in the office.";
+          selectedPersonElem.textContent = "Who will be the winner?";
         }
       });
     }
@@ -155,7 +153,7 @@
           .then(() => console.log("Random person selected and persisted:", selected))
           .catch(error => console.error("Error persisting selection:", error));
       } else {
-        set(ref(db, "lunchSelection/selectedPerson"), "No one is in the office.");
+        set(ref(db, "lunchSelection/selectedPerson"), "Who will be the winner?");
       }
     }
 
@@ -375,7 +373,8 @@
   
   <!-- Section for picking a random person (persistent selection) -->
   <button onclick="pickRandomPerson()">Who gets to pick?</button>
-  <p id="selectedPerson"></p>
+  <!-- The selected person text is now styled to be the same size as the "Pick a restaurant" heading -->
+  <p id="selectedPerson" style="font-size: 2em;"></p>
   
   <!-- RESET button for clearing office attendance data -->
   <button onclick="clearOfficeData()">RESET</button>
