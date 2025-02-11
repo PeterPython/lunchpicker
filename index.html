@@ -37,13 +37,12 @@
       border-radius: 50%;
       display: block;
     }
-    /* Pointer styling: Positioned so that its tip is on the top edge of the wheel (at the circle’s border) and points inward */
+    /* Pointer styling: Positioned so its tip is exactly on the circle's border and points inward */
     #pointer {
       position: absolute;
-      /* The wheel is 400x400 with a 20px margin from the edge, so the circle’s top edge is at 20px.
-         With the triangle’s border-bottom of 30px, setting top: -10px places its tip at 20px.
-      */
-      top: -10px; 
+      /* The wheel is drawn in a 400x400 canvas. With a radius of (200 - 20 = 180) the circle’s top edge is at 20px.
+         With a triangle height of 30px, setting top: -10px makes the tip appear at 20px. */
+      top: -10px;
       left: 50%;
       transform: translateX(-50%);
       width: 0;
@@ -76,7 +75,7 @@
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
 
-    // Expose some Firebase functions & the db to the global window so that non‑module scripts can use them.
+    // Expose Firebase functions & the db to the global window for non‑module scripts.
     window.db = db;
     window.ref = ref;
     window.set = set;
@@ -377,8 +376,7 @@
   </table>
   <!-- (The selected name display below the table has been removed.) -->
   
-  <!-- Roulette Wheel Section -->
-  <h2>Roulette Wheel</h2>
+  <!-- Roulette Wheel Section (the "Roulette Wheel" heading has been removed) -->
   <div id="rouletteContainer">
     <!-- Pointer positioned on the edge so its tip is exactly on the circle's border and points inward -->
     <div id="pointer"></div>
@@ -392,7 +390,7 @@
   
   <!-- Roulette Wheel Script -->
   <script>
-    // This function returns an array of names from the attendance table for those who clicked "Yes"
+    // Returns an array of names from the attendance table for those who clicked "Yes"
     function getAttendingNames() {
       const rows = document.querySelectorAll("#attendanceTable tbody tr");
       const names = [];
@@ -474,7 +472,7 @@
     // Initially draw the wheel.
     updateRouletteWheel();
     
-    // Spins the wheel and snaps it so that a sector's center is aligned with the pointer (which is at -π/2).
+    // Spins the wheel and then snaps it so that a sector's center is aligned with the pointer (which is at -π/2).
     function spinRouletteWheel(duration = 5000) {
       const attendees = getAttendingNames();
       if (attendees.length === 0) {
@@ -508,9 +506,8 @@
           const targetRotationMod = (2 * Math.PI + pointerAngle - desiredCenter) % (2 * Math.PI);
           const currentMod = rouletteCurrentAngle % (2 * Math.PI);
           let delta = targetRotationMod - currentMod;
-          if (delta > Math.PI) {
-            delta -= 2 * Math.PI;
-          } else if (delta < -Math.PI) {
+          // Always force a forward (clockwise) snap.
+          if (delta < 0) {
             delta += 2 * Math.PI;
           }
           const finalTargetAngle = rouletteCurrentAngle + delta;
