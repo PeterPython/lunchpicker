@@ -32,20 +32,21 @@
        ==================================== */
     function updateClock() {
       const clockElement = document.getElementById("clock");
+      // Use hour12: true for AM/PM format.
       const options = { timeZone: 'America/New_York', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true };
       const timeString = new Intl.DateTimeFormat('en-US', options).format(new Date());
-      // Display the time in AM/PM format with "Time:" prefix.
       clockElement.textContent = "Time: " + timeString;
       
       const parts = timeString.split(':');
       const hourPart = parts[0].replace(/\D/g, '');
       const hour = parseInt(hourPart, 10);
+      
       // If it's 10am or later and no one is selected, auto-pick a random person.
       if (hour >= 10 && !autoSelectionMade) {
         const selectedPersonElem = document.getElementById("selectedPerson");
         if (!selectedPersonElem.innerText ||
             selectedPersonElem.innerText.trim() === "" ||
-            selectedPersonElem.innerText.includes("Who will be the winner?")) {
+            selectedPersonElem.innerText.includes("???")) {
           console.log("Auto selecting random person because it's 10am or later and no one is selected.");
           pickRandomPerson();
           autoSelectionMade = true;
@@ -63,7 +64,7 @@
           // Display the picked person's name in bold with an exclamation point.
           selectedPersonElem.innerHTML = `<b>${selected}!</b>`;
         } else {
-          selectedPersonElem.textContent = "Who will be the winner?";
+          selectedPersonElem.innerHTML = `<b>???</b>`;
         }
       });
     }
@@ -153,7 +154,7 @@
           .then(() => console.log("Random person selected and persisted:", selected))
           .catch(error => console.error("Error persisting selection:", error));
       } else {
-        set(ref(db, "lunchSelection/selectedPerson"), "Who will be the winner?");
+        set(ref(db, "lunchSelection/selectedPerson"), "???");
       }
     }
 
@@ -373,7 +374,7 @@
   
   <!-- Section for picking a random person (persistent selection) -->
   <button onclick="pickRandomPerson()">Who gets to pick?</button>
-  <!-- The selected person text is now styled to be the same size as the "Pick a restaurant" heading -->
+  <!-- The selected person text is styled to be the same size as the "Pick a restaurant" heading -->
   <p id="selectedPerson" style="font-size: 2em;"></p>
   
   <!-- RESET button for clearing office attendance data -->
@@ -382,7 +383,7 @@
   <!-- Restaurant Section -->
   <h2>Pick a restaurant</h2>
   <select id="restaurant" onchange="handleRestaurantSelection()"></select>
-  <!-- Add white space between the dropdown and the new restaurant field -->
+  <!-- White space between dropdown and new restaurant field -->
   <div style="height: 20px;"></div>
   <div id="newRestaurantContainer"></div>
 </body>
