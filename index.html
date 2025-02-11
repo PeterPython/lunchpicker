@@ -38,7 +38,7 @@
       display: block;
     }
     /* Pointer styling: Positioned on the edge so its tip is exactly on the circle's border and points inward.
-       "pointer-events: none" lets clicks pass through to the canvas. */
+       "pointer-events: none" lets clicks pass through the pointer to the canvas. */
     #pointer {
       position: absolute;
       top: -10px;
@@ -75,11 +75,11 @@
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
 
-    // Expose Firebase functions & db to global window for non‑module scripts.
+    // Expose Firebase Database helper functions under unique names.
     window.db = db;
-    window.ref = ref;
-    window.set = set;
-    window.onValue = onValue;
+    window.firebaseRef = ref;
+    window.firebaseSet = set;
+    window.firebaseOnValue = onValue;
 
     // Global flag for auto-selection.
     let autoSelectionMade = false;
@@ -107,8 +107,8 @@
 
     // Listener for persistent lunch selection.
     function attachLunchSelectionListener() {
-      const lunchSelectionRef = ref(db, "lunchSelection/selectedPerson");
-      onValue(lunchSelectionRef, (snapshot) => {
+      const lunchSelectionRef = window.firebaseRef(window.db, "lunchSelection/selectedPerson");
+      window.firebaseOnValue(lunchSelectionRef, (snapshot) => {
         console.log("Selected person persisted:", snapshot.val());
       });
     }
@@ -132,14 +132,14 @@
         }
       }
       if (selected === "yes") {
-        set(ref(db, "officeAttendance/" + name), name)
+        window.firebaseSet(window.firebaseRef(window.db, "officeAttendance/" + name), name)
           .then(() => {
             updateCellBackground(name, "yes");
             updateRouletteWheel(); // update roulette immediately
           })
           .catch(error => console.error("Error updating attendance for " + name + ":", error));
       } else if (selected === "no") {
-        remove(ref(db, "officeAttendance/" + name))
+        window.firebaseSet(window.firebaseRef(window.db, "officeAttendance/" + name), null)
           .then(() => {
             updateCellBackground(name, "no");
             updateRouletteWheel(); // update roulette immediately
@@ -149,8 +149,8 @@
     }
 
     function attachOfficeAttendanceListener() {
-      const officeAttendanceRef = ref(db, "officeAttendance");
-      onValue(officeAttendanceRef, (snapshot) => {
+      const officeAttendanceRef = window.firebaseRef(window.db, "officeAttendance");
+      window.firebaseOnValue(officeAttendanceRef, (snapshot) => {
         persons.forEach(name => {
           const yesRadio = document.querySelector(`input[name="officeStatus_${name}"][value="yes"]`);
           const noRadio = document.querySelector(`input[name="officeStatus_${name}"][value="no"]`);
@@ -181,16 +181,16 @@
       if (inOfficeNames.length > 0) {
         const randomIndex = Math.floor(Math.random() * inOfficeNames.length);
         const selected = inOfficeNames[randomIndex];
-        set(ref(db, "lunchSelection/selectedPerson"), selected)
+        window.firebaseSet(window.firebaseRef(window.db, "lunchSelection/selectedPerson"), selected)
           .then(() => console.log("Random person selected and persisted:", selected))
           .catch(error => console.error("Error persisting selection:", error));
       } else {
-        set(ref(db, "lunchSelection/selectedPerson"), "???");
+        window.firebaseSet(window.firebaseRef(window.db, "lunchSelection/selectedPerson"), "???");
       }
     }
 
     function clearOfficeData() {
-      remove(ref(db, "officeAttendance"))
+      window.firebaseSet(window.firebaseRef(window.db, "officeAttendance"), null)
         .then(() => console.log("Office attendance cleared"))
         .catch(error => console.error("Error clearing office attendance:", error));
     }
@@ -199,8 +199,8 @@
        Restaurant Selector Functions
        ==================================== */
     function attachRestaurantListener() {
-      const restaurantRef = ref(db, "restaurants");
-      onValue(restaurantRef, (snapshot) => {
+      const restaurantRef = window.firebaseRef(window.db, "restaurants");
+      window.firebaseOnValue(restaurantRef, (snapshot) => {
         const select = document.getElementById("restaurant");
         if (!select) return;
         const currentValue = select.value;
@@ -245,7 +245,7 @@
         addButton.onclick = function() {
           const newRestaurant = newInput.value.trim();
           if (newRestaurant) {
-            push(ref(db, "restaurants"), newRestaurant)
+            push(window.firebaseRef(window.db, "restaurants"), newRestaurant)
               .then(() => {
                 newRestaurantContainer.innerHTML = "";
                 select.value = newRestaurant;
@@ -456,10 +456,10 @@
       drawRouletteWheel(attendees);
     }
     
-    // Persist the UI state by listening for changes to rouletteState/currentAngle.
+    // Persist the UI state by listening for changes to "rouletteState/currentAngle."
     function attachRouletteStateListener() {
-      const rouletteStateRef = window.ref(window.db, "rouletteState/currentAngle");
-      window.onValue(rouletteStateRef, (snapshot) => {
+      const rouletteStateRef = window.firebaseRef(window.db, "rouletteState/currentAngle");
+      window.firebaseOnValue(rouletteStateRef, (snapshot) => {
         const angle = snapshot.val();
         if (angle !== null) {
           rouletteCurrentAngle = angle;
@@ -472,7 +472,7 @@
     // Initially draw the wheel.
     updateRouletteWheel();
     
-    // Spins the wheel and then snaps it so that a sector's center is aligned with the pointer (which is at -π/2).
+    // Spins the wheel and then snaps it so that a sector's center is aligned with the pointer (at -π/2).
     function spinRouletteWheel(duration = 5000) {
       console.log("Spin started");
       const attendees = getAttendingNames();
@@ -526,7 +526,7 @@
             if (progressSnap < 1) {
               requestAnimationFrame(animateSnap);
             } else {
-              window.set(window.ref(window.db, "rouletteState/currentAngle"), rouletteCurrentAngle);
+              window.firebaseSet(window.firebaseRef(window.db, "rouletteState/currentAngle"), rouletteCurrentAngle);
               alert("Winner: " + currentAttendees[winnerIndex]);
             }
           }
@@ -541,8 +541,7 @@
       spinRouletteWheel(5000);
     });
     
-    // Optionally update the wheel periodically in case attendance changes.
-    // Commented out for now to avoid interfering with the spin animation.
+    // (Optional) If you want periodic updates outside of the spin animation, you can re-enable this.
     // setInterval(updateRouletteWheel, 2000);
   </script>
 </body>
