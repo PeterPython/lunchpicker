@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Lunch!</title>
+  <title>Lunch Roulette</title>
   <style>
     /* General styling */
     body {
@@ -11,6 +11,9 @@
       background: #fafafa;
       margin: 0;
       padding: 20px;
+    }
+    h1 {
+      font-size: 2.5em;
     }
     h2 {
       font-size: 2em;
@@ -50,9 +53,14 @@
       border-bottom: 30px solid #333;
       pointer-events: none;
     }
+    /* Winner display styling */
+    #winnerDisplay {
+      font-size: 1.5em;
+      margin-top: 10px;
+    }
   </style>
   
-  <!-- Firebase & Main App Script (as a module) -->
+  <!-- Firebase & Main App Script (module) -->
   <script type="module">
     // Import Firebase modules
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.3.0/firebase-app.js";
@@ -74,7 +82,7 @@
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
 
-    // Expose Firebase Database helper functions on the global window object.
+    // Expose Firebase Database helper functions globally.
     window.db = db;
     window.firebaseRef = ref;
     window.firebaseSet = set;
@@ -120,7 +128,7 @@
       }
     }
 
-    // Update attendance for a person and force an immediate roulette update.
+    // Update attendance for a person.
     function updateAttendanceFor(name) {
       const radios = document.getElementsByName("officeStatus_" + name);
       let selected = "";
@@ -134,14 +142,12 @@
         window.firebaseSet(window.firebaseRef(window.db, "officeAttendance/" + name), name)
           .then(() => {
             updateCellBackground(name, "yes");
-            // (Optionally update the roulette wheel immediately)
           })
           .catch(error => console.error("Error updating attendance for " + name + ":", error));
       } else if (selected === "no") {
         window.firebaseSet(window.firebaseRef(window.db, "officeAttendance/" + name), null)
           .then(() => {
             updateCellBackground(name, "no");
-            // (Optionally update the roulette wheel immediately)
           })
           .catch(error => console.error("Error removing attendance for " + name + ":", error));
       }
@@ -188,6 +194,7 @@
       }
     }
 
+    // Clear attendance (used by the Clear button).
     function clearOfficeData() {
       window.firebaseSet(window.firebaseRef(window.db, "officeAttendance"), null)
         .then(() => console.log("Office attendance cleared"))
@@ -279,7 +286,9 @@
   </script>
 </head>
 <body>
-  <h1>Lunch!</h1>
+  <!-- Top Headline -->
+  <h1>Lunch Roulette</h1>
+  
   <!-- Clock Display -->
   <div id="clock"></div>
   
@@ -373,10 +382,16 @@
     </tbody>
   </table>
   
+  <!-- Clear button under the table -->
+  <div>
+    <button onclick="clearOfficeData()">Clear</button>
+  </div>
+  
   <!-- Roulette Wheel Section -->
   <div id="rouletteContainer">
     <div id="pointer"></div>
     <canvas id="rouletteWheel" width="400" height="400"></canvas>
+    <div id="winnerDisplay"></div>
   </div>
   
   <!-- Lunch Options (Restaurant Dropdown) -->
@@ -388,7 +403,6 @@
   <script>
     // Wrap roulette wheel code in DOMContentLoaded to ensure all elements are loaded.
     window.addEventListener("DOMContentLoaded", function() {
-      // Returns an array of names from the attendance table for those who clicked "Yes"
       function getAttendingNames() {
         const rows = document.querySelectorAll("#attendanceTable tbody tr");
         const names = [];
@@ -399,15 +413,10 @@
             names.push(name);
           }
         });
-        console.log("Attending names:", names);
         return names;
       }
       
       const rouletteCanvas = document.getElementById("rouletteWheel");
-      if (!rouletteCanvas) {
-        console.error("rouletteWheel element not found!");
-        return;
-      }
       const rouletteCtx = rouletteCanvas.getContext("2d");
       const rouletteCenterX = rouletteCanvas.width / 2;
       const rouletteCenterY = rouletteCanvas.height / 2;
@@ -418,7 +427,6 @@
       let currentSectorAngle = 0;
       let isSpinning = false; // Prevent multiple spins at once.
       
-      // Draws the roulette wheel with each sector having a unique color.
       function drawRouletteWheel(attendees) {
         rouletteCtx.clearRect(0, 0, rouletteCanvas.width, rouletteCanvas.height);
         if (attendees.length === 0) {
@@ -450,35 +458,16 @@
         }
       }
       
-      // Redraws the wheel using the current attendance.
       function updateRouletteWheel() {
         const attendees = getAttendingNames();
         drawRouletteWheel(attendees);
       }
       
-      // Persist the UI state by listening for changes to "rouletteState/currentAngle."
-      function attachRouletteStateListener() {
-        const rouletteStateRef = window.firebaseRef(window.db, "rouletteState/currentAngle");
-        window.firebaseOnValue(rouletteStateRef, (snapshot) => {
-          const angle = snapshot.val();
-          if (angle !== null) {
-            rouletteCurrentAngle = angle;
-            updateRouletteWheel();
-          }
-        });
-      }
-      attachRouletteStateListener();
-      
-      updateRouletteWheel();
-      
-      // Spins the wheel and then snaps it so that a sector’s center is aligned with the pointer (at -π/2).
       function spinRouletteWheel(duration = 5000) {
         if (isSpinning) return;
         isSpinning = true;
-        console.log("Spin started");
         const attendees = getAttendingNames();
         if (attendees.length === 0) {
-          alert("No attendees selected");
           isSpinning = false;
           return;
         }
@@ -499,17 +488,14 @@
           if (progress < 1) {
             requestAnimationFrame(animateRoulette);
           } else {
-            const pointerAngle = -Math.PI / 2;
-            const normalizedAngle = rouletteCurrentAngle % (2 * Math.PI);
-            let pointerPos = (2 * Math.PI + pointerAngle - normalizedAngle) % (2 * Math.PI);
-            let winnerIndex = Math.floor(pointerPos / currentSectorAngle) % sectors;
-            const desiredCenter = (winnerIndex + 0.5) * currentSectorAngle;
-            const targetRotationMod = (2 * Math.PI + pointerAngle - desiredCenter) % (2 * Math.PI);
-            const currentMod = rouletteCurrentAngle % (2 * Math.PI);
-            let delta = targetRotationMod - currentMod;
-            if (delta < 0) {
-              delta += 2 * Math.PI;
-            }
+            // Choose a random winner.
+            let winnerIndex = Math.floor(Math.random() * sectors);
+            let modAngle = rouletteCurrentAngle % (2 * Math.PI);
+            if (modAngle < 0) modAngle += 2 * Math.PI;
+            let pointerAngle = -Math.PI / 2;
+            let desiredModAngle = (pointerAngle - (winnerIndex + 0.5) * currentSectorAngle) % (2 * Math.PI);
+            if (desiredModAngle < 0) desiredModAngle += 2 * Math.PI;
+            let delta = (desiredModAngle - modAngle + 2 * Math.PI) % (2 * Math.PI);
             const finalTargetAngle = rouletteCurrentAngle + delta;
             
             const snapDuration = 1000;
@@ -525,7 +511,8 @@
                 requestAnimationFrame(animateSnap);
               } else {
                 window.firebaseSet(window.firebaseRef(window.db, "rouletteState/currentAngle"), rouletteCurrentAngle);
-                alert("Winner: " + currentAttendees[winnerIndex]);
+                // Instead of a popup, update the winner display.
+                document.getElementById("winnerDisplay").textContent = "Winner: " + currentAttendees[winnerIndex];
                 isSpinning = false;
               }
             }
@@ -535,13 +522,12 @@
         requestAnimationFrame(animateRoulette);
       }
       
-      // Spin the wheel when the canvas is clicked.
       rouletteCanvas.addEventListener("click", function() {
         spinRouletteWheel(5000);
       });
       
-      // Optionally, update the wheel periodically.
-      // setInterval(updateRouletteWheel, 2000);
+      // Periodically update the wheel in case attendance changes.
+      setInterval(updateRouletteWheel, 1000);
     });
   </script>
 </body>
