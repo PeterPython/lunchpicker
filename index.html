@@ -413,6 +413,7 @@
     let rouletteCurrentAngle = 0;
     let currentAttendees = []; // Names used in the current spin.
     let currentSectorAngle = 0;
+    let isSpinning = false; // Prevent starting multiple spins at once.
     
     // Draws the roulette wheel with each sector having a unique color.
     function drawRouletteWheel(attendees) {
@@ -472,12 +473,15 @@
     // Initially draw the wheel.
     updateRouletteWheel();
     
-    // Spins the wheel and then snaps it so that a sector's center is aligned with the pointer (at -π/2).
+    // Spins the wheel and then snaps it so that a sector’s center is aligned with the pointer (at -π/2).
     function spinRouletteWheel(duration = 5000) {
+      if (isSpinning) return;
+      isSpinning = true;
       console.log("Spin started");
       const attendees = getAttendingNames();
       if (attendees.length === 0) {
         alert("No attendees selected");
+        isSpinning = false;
         return;
       }
       currentAttendees = attendees;
@@ -498,11 +502,12 @@
         if (progress < 1) {
           requestAnimationFrame(animateRoulette);
         } else {
-          // Determine which sector’s center is closest to the pointer at -π/2.
+          // Calculate which sector’s center is closest to the pointer (located at -π/2)
           const pointerAngle = -Math.PI / 2;
           const normalizedAngle = rouletteCurrentAngle % (2 * Math.PI);
           let pointerPos = (2 * Math.PI + pointerAngle - normalizedAngle) % (2 * Math.PI);
-          let winnerIndex = Math.round(pointerPos / currentSectorAngle) % sectors;
+          // Use Math.floor (instead of Math.round) so that the sector whose center is aligned wins.
+          let winnerIndex = Math.floor(pointerPos / currentSectorAngle) % sectors;
           const desiredCenter = (winnerIndex + 0.5) * currentSectorAngle;
           const targetRotationMod = (2 * Math.PI + pointerAngle - desiredCenter) % (2 * Math.PI);
           const currentMod = rouletteCurrentAngle % (2 * Math.PI);
@@ -528,6 +533,7 @@
             } else {
               window.firebaseSet(window.firebaseRef(window.db, "rouletteState/currentAngle"), rouletteCurrentAngle);
               alert("Winner: " + currentAttendees[winnerIndex]);
+              isSpinning = false;
             }
           }
           requestAnimationFrame(animateSnap);
