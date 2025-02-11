@@ -38,7 +38,7 @@
       display: block;
     }
     /* Pointer styling: Positioned on the edge so its tip is exactly on the circle's border and points inward.
-       Added "pointer-events: none;" so that clicks pass through to the canvas. */
+       "pointer-events: none" lets clicks pass through to the canvas. */
     #pointer {
       position: absolute;
       top: -10px;
@@ -75,7 +75,7 @@
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
 
-    // Expose Firebase functions & db to the global window for non‑module scripts.
+    // Expose Firebase functions & db to global window for non‑module scripts.
     window.db = db;
     window.ref = ref;
     window.set = set;
@@ -135,14 +135,14 @@
         set(ref(db, "officeAttendance/" + name), name)
           .then(() => {
             updateCellBackground(name, "yes");
-            updateRouletteWheel(); // Update roulette immediately.
+            updateRouletteWheel(); // update roulette immediately
           })
           .catch(error => console.error("Error updating attendance for " + name + ":", error));
       } else if (selected === "no") {
         remove(ref(db, "officeAttendance/" + name))
           .then(() => {
             updateCellBackground(name, "no");
-            updateRouletteWheel(); // Update roulette immediately.
+            updateRouletteWheel(); // update roulette immediately
           })
           .catch(error => console.error("Error removing attendance for " + name + ":", error));
       }
@@ -474,6 +474,7 @@
     
     // Spins the wheel and then snaps it so that a sector's center is aligned with the pointer (which is at -π/2).
     function spinRouletteWheel(duration = 5000) {
+      console.log("Spin started");
       const attendees = getAttendingNames();
       if (attendees.length === 0) {
         alert("No attendees selected");
@@ -541,7 +542,8 @@
     });
     
     // Optionally update the wheel periodically in case attendance changes.
-    setInterval(updateRouletteWheel, 2000);
+    // Commented out for now to avoid interfering with the spin animation.
+    // setInterval(updateRouletteWheel, 2000);
   </script>
 </body>
 </html>
