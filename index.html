@@ -8,7 +8,7 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.3.0/firebase-app.js";
     import { getDatabase, ref, set, remove, push, onValue } from "https://www.gstatic.com/firebasejs/11.3.0/firebase-database.js";
 
-    // Firebase configuration using your actual keys.
+    // Firebase configuration (using your actual keys)
     const firebaseConfig = {
       apiKey: "AIzaSyAaihPMwzCZEYQV_pUaffWKqIqxubAlzkc",
       authDomain: "lunch-beda3.firebaseapp.com",
@@ -28,23 +28,23 @@
     let autoSelectionMade = false;
 
     /* ====================================
-       Clock and Auto-selection Functionality
+       Clock & Auto-Selection Functionality
        ==================================== */
-
-    // Update the clock (displayed in ET) and, if the time is 10am ET or later and no one is selected, auto-pick a random person.
     function updateClock() {
       const clockElement = document.getElementById("clock");
+      // Format the time in Eastern Time (ET)
       const options = { timeZone: 'America/New_York', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
       const timeString = new Intl.DateTimeFormat('en-US', options).format(new Date());
       clockElement.textContent = "ET Time: " + timeString;
-
-      // Parse the hour (as a number) from the time string (format "HH:MM:SS")
+      
+      // Extract the hour from the formatted time (assuming format "HH:MM:SS")
       const parts = timeString.split(':');
       const hour = parseInt(parts[0], 10);
-
-      // If it's 10am ET or later and no person has been auto-selected, then auto-pick one.
+      
+      // If it is 10am ET or later and no one is selected, auto-pick a random person.
       if (hour >= 10 && !autoSelectionMade) {
         const selectedPersonElem = document.getElementById("selectedPerson");
+        // If no person is selected (or the element shows "No one is in the office")
         if (!selectedPersonElem.textContent ||
             selectedPersonElem.textContent.trim() === "" ||
             selectedPersonElem.textContent.includes("No one")) {
@@ -61,7 +61,7 @@
 
     // Called when a radio button for a specific person is changed.
     // If "yes" is selected, the person's name is stored in Firebase and their name cell turns green.
-    // If "no" is selected, their attendance is removed and the cell's background is cleared.
+    // If "no" is selected, their attendance is removed and the background is cleared.
     function updateAttendanceFor(name) {
       const radios = document.getElementsByName("officeStatus_" + name);
       let selected = "";
@@ -85,7 +85,7 @@
       }
     }
 
-    // Attaches a realtime listener that updates the table based on Firebase attendance data.
+    // Attaches a realtime listener to update the attendance table based on Firebase data.
     function attachOfficeAttendanceListener() {
       const officeAttendanceRef = ref(db, "officeAttendance");
       onValue(officeAttendanceRef, (snapshot) => {
@@ -107,7 +107,7 @@
       });
     }
 
-    // Picks a random person from the office attendance table (i.e. among those who have marked "yes").
+    // Picks a random person from those marked "Yes" in the office attendance table.
     function pickRandomPerson() {
       const rows = document.querySelectorAll("#attendanceTable tbody tr");
       const inOfficeNames = [];
@@ -235,32 +235,15 @@
       console.log("Random restaurant picked:", randomRestaurant);
     }
 
-    // Set up the clock update interval and auto-selection check.
-    function updateClock() {
-      const clockElement = document.getElementById("clock");
-      const options = { timeZone: 'America/New_York', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
-      const timeString = new Intl.DateTimeFormat('en-US', options).format(new Date());
-      clockElement.textContent = "ET Time: " + timeString;
-      
-      const parts = timeString.split(':');
-      const hour = parseInt(parts[0], 10);
-      // If it's 10am ET or later and no one is selected, auto-pick a random person.
-      if (hour >= 10 && !autoSelectionMade) {
-        const selectedPersonElem = document.getElementById("selectedPerson");
-        if (!selectedPersonElem.textContent ||
-            selectedPersonElem.textContent.trim() === "" ||
-            selectedPersonElem.textContent.includes("No one")) {
-          console.log("Auto selecting random person because it's 10am ET or later and no one is selected.");
-          pickRandomPerson();
-          autoSelectionMade = true;
-        }
-      }
+    // Set up the clock update interval.
+    function startClock() {
+      setInterval(updateClock, 1000);
     }
 
     document.addEventListener("DOMContentLoaded", () => {
       attachOfficeAttendanceListener();
       attachRestaurantListener();
-      setInterval(updateClock, 1000);
+      startClock();
     });
 
     // Expose functions for inline event handling.
@@ -270,6 +253,7 @@
     window.handleRestaurantSelection = handleRestaurantSelection;
     window.pickRandomRestaurant = pickRandomRestaurant;
     window.pickRandomPerson = pickRandomPerson;
+    window.clearOfficeData = clearOfficeData;
   </script>
 </head>
 <body>
@@ -356,12 +340,12 @@
     </tbody>
   </table>
   
-  <!-- "Restaurant selector" section -->
+  <!-- "Restaurant selector" section (for picking a random person from those in office) -->
   <h2>Restaurant selector</h2>
   <button onclick="pickRandomPerson()">Restaurant selector</button>
   <p id="selectedPerson"></p>
   
-  <!-- RESET button for office attendance -->
+  <!-- RESET button for clearing office attendance data -->
   <button onclick="clearOfficeData()">RESET</button>
   
   <!-- Restaurant Section -->
