@@ -8,6 +8,31 @@
     h2, #selectedPerson {
       font-size: 2em;
     }
+    /* General page styling */
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      background: #fafafa;
+      margin: 0;
+      padding: 0;
+    }
+    /* Roulette wheel styling */
+    #rouletteWheel {
+      display: block;
+      margin: 20px auto;
+      border: 5px solid #333;
+      border-radius: 50%;
+    }
+    #pointer {
+      width: 0;
+      height: 0;
+      margin: 0 auto;
+      border-left: 20px solid transparent;
+      border-right: 20px solid transparent;
+      border-bottom: 30px solid #333;
+      position: relative;
+      top: 20px;
+    }
   </style>
   <script type="module">
     // Import Firebase modules
@@ -32,6 +57,9 @@
 
     // Global flag to ensure auto-selection happens only once.
     let autoSelectionMade = false;
+
+    // Use the same persons array for attendance and the roulette wheel.
+    const persons = ["Alec", "Chai", "Cole", "Denis", "Hunter", "Pete"];
 
     /* ====================================
        Clock & Auto-Selection Functionality
@@ -93,7 +121,6 @@
       }
     }
 
-    // Called when a radio button for a specific person is changed.
     function updateAttendanceFor(name) {
       const radios = document.getElementsByName("officeStatus_" + name);
       let selected = "";
@@ -120,12 +147,10 @@
       }
     }
 
-    // Realtime listener to update the attendance table based on Firebase data.
     function attachOfficeAttendanceListener() {
       const officeAttendanceRef = ref(db, "officeAttendance");
       onValue(officeAttendanceRef, (snapshot) => {
-        const names = ["Alec", "Chai", "Cole", "Denis", "Hunter", "Pete"];
-        names.forEach(name => {
+        persons.forEach(name => {
           const yesRadio = document.querySelector(`input[name="officeStatus_${name}"][value="yes"]`);
           const noRadio = document.querySelector(`input[name="officeStatus_${name}"][value="no"]`);
           if (snapshot.hasChild(name)) {
@@ -141,8 +166,6 @@
       });
     }
 
-    // Picks a random person from those marked "Yes" in the attendance table
-    // and persists that selection in Firebase.
     function pickRandomPerson() {
       const rows = document.querySelectorAll("#attendanceTable tbody tr");
       const inOfficeNames = [];
@@ -190,7 +213,7 @@
             select.appendChild(option);
           });
         }
-        // Always add the extra option for adding a new restaurant.
+        // Append the extra option for adding a new restaurant.
         const chooseNewOption = document.createElement("option");
         chooseNewOption.value = "Choose New";
         chooseNewOption.textContent = "Choose new restaurant";
@@ -266,109 +289,82 @@
     window.pickRandomPerson = pickRandomPerson;
     window.clearOfficeData = clearOfficeData;
   </script>
-</head>
-<body>
-  <h1>Lunch!</h1>
   
-  <!-- Clock Display -->
-  <div id="clock" style="font-weight: bold; margin-bottom: 5px;"></div>
-  <!-- Deadline Line -->
-  <div id="deadline" style="font-weight: bold; margin-bottom: 10px;">Deadline: 10:00 AM</div>
+  <!-- End of Firebase and Lunch! app code -->
   
-  <!-- Office Attendance Table (heading removed) -->
-  <table id="attendanceTable" border="1" cellpadding="5">
-    <thead>
-      <tr>
-        <th>Name</th>
-        <th>Eating lunch at the office?</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td id="nameCell_Alec">Alec</td>
-        <td>
-          <label>
-            <input type="radio" name="officeStatus_Alec" value="yes" onchange="updateAttendanceFor('Alec')"> Yes
-          </label>
-          <label>
-            <input type="radio" name="officeStatus_Alec" value="no" onchange="updateAttendanceFor('Alec')"> No
-          </label>
-        </td>
-      </tr>
-      <tr>
-        <td id="nameCell_Chai">Chai</td>
-        <td>
-          <label>
-            <input type="radio" name="officeStatus_Chai" value="yes" onchange="updateAttendanceFor('Chai')"> Yes
-          </label>
-          <label>
-            <input type="radio" name="officeStatus_Chai" value="no" onchange="updateAttendanceFor('Chai')"> No
-          </label>
-        </td>
-      </tr>
-      <tr>
-        <td id="nameCell_Cole">Cole</td>
-        <td>
-          <label>
-            <input type="radio" name="officeStatus_Cole" value="yes" onchange="updateAttendanceFor('Cole')"> Yes
-          </label>
-          <label>
-            <input type="radio" name="officeStatus_Cole" value="no" onchange="updateAttendanceFor('Cole')"> No
-          </label>
-        </td>
-      </tr>
-      <tr>
-        <td id="nameCell_Denis">Denis</td>
-        <td>
-          <label>
-            <input type="radio" name="officeStatus_Denis" value="yes" onchange="updateAttendanceFor('Denis')"> Yes
-          </label>
-          <label>
-            <input type="radio" name="officeStatus_Denis" value="no" onchange="updateAttendanceFor('Denis')"> No
-          </label>
-        </td>
-      </tr>
-      <tr>
-        <td id="nameCell_Hunter">Hunter</td>
-        <td>
-          <label>
-            <input type="radio" name="officeStatus_Hunter" value="yes" onchange="updateAttendanceFor('Hunter')"> Yes
-          </label>
-          <label>
-            <input type="radio" name="officeStatus_Hunter" value="no" onchange="updateAttendanceFor('Hunter')"> No
-          </label>
-        </td>
-      </tr>
-      <tr>
-        <td id="nameCell_Pete">Pete</td>
-        <td>
-          <label>
-            <input type="radio" name="officeStatus_Pete" value="yes" onchange="updateAttendanceFor('Pete')"> Yes
-          </label>
-          <label>
-            <input type="radio" name="officeStatus_Pete" value="no" onchange="updateAttendanceFor('Pete')"> No
-          </label>
-        </td>
-      </tr>
-    </tbody>
-  </table>
-  
-  <!-- White space after the table -->
-  <div style="height: 20px;"></div>
-  
-  <!-- Section for picking a random person (persistent selection) -->
-  <button onclick="pickRandomPerson()">Who gets to pick?</button>
-  <!-- The selected person text is styled to be the same size as the "Pick a restaurant" heading -->
-  <p id="selectedPerson" style="font-size: 2em;"></p>
-  
-  <!-- RESET button for clearing office attendance data -->
-  <button onclick="clearOfficeData()">RESET</button>
-  
-  <!-- Restaurant Section -->
-  <h2>Pick a restaurant</h2>
-  <select id="restaurant" onchange="handleRestaurantSelection()"></select>
-  <!-- White space between dropdown and new restaurant field -->
-  <div style="height: 20px;"></div>
-  <div id="newRestaurantContainer"></div>
+  <!-- New Section: Roulette Wheel -->
+  <h2>Roulette Wheel</h2>
+  <!-- Pointer arrow above the wheel -->
+  <div id="pointer"></div>
+  <!-- Canvas for the roulette wheel -->
+  <canvas id="rouletteWheel" width="400" height="400"></canvas>
+  <script>
+    // Roulette wheel integration:
+    const rouletteCanvas = document.getElementById("rouletteWheel");
+    const rouletteCtx = rouletteCanvas.getContext("2d");
+    const rouletteCenterX = rouletteCanvas.width / 2;
+    const rouletteCenterY = rouletteCanvas.height / 2;
+    const rouletteRadius = Math.min(rouletteCenterX, rouletteCenterY) - 20;
+    const rouletteSectors = persons.length; // Use the persons array from above.
+    const rouletteSectorAngle = 2 * Math.PI / rouletteSectors;
+    
+    let rouletteCurrentAngle = 0;
+    
+    function drawRouletteWheel() {
+      rouletteCtx.clearRect(0, 0, rouletteCanvas.width, rouletteCanvas.height);
+      for (let i = 0; i < rouletteSectors; i++) {
+        const startAngle = rouletteCurrentAngle + i * rouletteSectorAngle;
+        const endAngle = startAngle + rouletteSectorAngle;
+        rouletteCtx.fillStyle = i % 2 === 0 ? "#ffdd57" : "#ff6f69";
+        rouletteCtx.beginPath();
+        rouletteCtx.moveTo(rouletteCenterX, rouletteCenterY);
+        rouletteCtx.arc(rouletteCenterX, rouletteCenterY, rouletteRadius, startAngle, endAngle);
+        rouletteCtx.closePath();
+        rouletteCtx.fill();
+        
+        // Draw the person's name in the sector.
+        rouletteCtx.save();
+        rouletteCtx.translate(rouletteCenterX, rouletteCenterY);
+        rouletteCtx.rotate(startAngle + rouletteSectorAngle / 2);
+        rouletteCtx.textAlign = "right";
+        rouletteCtx.fillStyle = "#000";
+        rouletteCtx.font = "16px Arial";
+        rouletteCtx.fillText(persons[i], rouletteRadius - 10, 10);
+        rouletteCtx.restore();
+      }
+    }
+    
+    drawRouletteWheel();
+    
+    function spinRouletteWheel(duration = 5000) {
+      const startTime = performance.now();
+      const initialAngle = rouletteCurrentAngle;
+      const totalSpins = 10; // Total full rotations.
+      
+      function animateRoulette(now) {
+        const elapsed = now - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        const easedProgress = 1 - Math.pow(1 - progress, 3);
+        rouletteCurrentAngle = initialAngle + easedProgress * totalSpins * 2 * Math.PI;
+        drawRouletteWheel();
+        if (progress < 1) {
+          requestAnimationFrame(animateRoulette);
+        } else {
+          // Determine the winning sector.
+          const normalizedAngle = rouletteCurrentAngle % (2 * Math.PI);
+          // Adjust for the pointer at the top (π/2).
+          const pointerAngle = (2 * Math.PI + Math.PI/2 - normalizedAngle) % (2 * Math.PI);
+          const winnerIndex = Math.floor(pointerAngle / rouletteSectorAngle);
+          const winner = persons[winnerIndex];
+          alert("Winner: " + winner);
+        }
+      }
+      requestAnimationFrame(animateRoulette);
+    }
+    
+    rouletteCanvas.addEventListener("click", function() {
+      spinRouletteWheel(5000);
+    });
+  </script>
 </body>
 </html>
