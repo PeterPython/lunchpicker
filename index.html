@@ -16,6 +16,17 @@
       margin: 0;
       padding: 0;
     }
+    /* Table styling */
+    table {
+      margin: 20px auto;
+      border-collapse: collapse;
+    }
+    table, th, td {
+      border: 1px solid #333;
+    }
+    th, td {
+      padding: 10px;
+    }
     /* Roulette wheel styling */
     #rouletteWheel {
       display: block;
@@ -34,12 +45,13 @@
       top: 20px;
     }
   </style>
+  <!-- Firebase & Main App Script (as a module) -->
   <script type="module">
     // Import Firebase modules
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.3.0/firebase-app.js";
     import { getDatabase, ref, set, remove, push, onValue } from "https://www.gstatic.com/firebasejs/11.3.0/firebase-database.js";
 
-    // Firebase configuration using your actual keys.
+    // Firebase configuration (use your actual keys)
     const firebaseConfig = {
       apiKey: "AIzaSyAaihPMwzCZEYQV_pUaffWKqIqxubAlzkc",
       authDomain: "lunch-beda3.firebaseapp.com",
@@ -60,12 +72,15 @@
 
     // Use the same persons array for attendance and the roulette wheel.
     const persons = ["Alec", "Chai", "Cole", "Denis", "Hunter", "Pete"];
+    // Expose persons globally so that the non-module script (roulette code) can access it.
+    window.persons = persons;
 
     /* ====================================
        Clock & Auto-Selection Functionality
        ==================================== */
     function updateClock() {
       const clockElement = document.getElementById("clock");
+      if (!clockElement) return;
       const options = { timeZone: 'America/New_York', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true };
       const timeString = new Intl.DateTimeFormat('en-US', options).format(new Date());
       clockElement.textContent = "Time: " + timeString;
@@ -74,7 +89,7 @@
       const hourPart = parts[0].replace(/\D/g, '');
       const hour = parseInt(hourPart, 10);
       
-      // If it's 10am or later and no one is selected, auto-pick a random person.
+      // Auto-select a random person at 10am or later if none has been chosen yet.
       if (hour >= 10 && !autoSelectionMade) {
         const selectedPersonElem = document.getElementById("selectedPerson");
         if (!selectedPersonElem.innerText ||
@@ -97,7 +112,6 @@
           // Display the picked person's name in bold with an exclamation point.
           selectedPersonElem.innerHTML = `<b>${selected}!</b>`;
         } else {
-          // Fallback text without an exclamation point.
           selectedPersonElem.innerHTML = `<b>???</b>`;
         }
       });
@@ -109,38 +123,28 @@
     function updateCellBackground(name, selected) {
       const cell = document.getElementById("nameCell_" + name);
       if (cell) {
-        if (selected === "yes") {
-          cell.style.backgroundColor = "green";
-          console.log("Set background for " + name + " to green.");
-        } else {
-          cell.style.backgroundColor = "";
-          console.log("Cleared background for " + name + ".");
-        }
-      } else {
-        console.error("Cell not found for " + name);
+        cell.style.backgroundColor = selected === "yes" ? "green" : "";
       }
     }
 
     function updateAttendanceFor(name) {
       const radios = document.getElementsByName("officeStatus_" + name);
       let selected = "";
-      for (let i = 0; i < radios.length; i++) {
-        if (radios[i].checked) {
-          selected = radios[i].value;
+      for (let radio of radios) {
+        if (radio.checked) {
+          selected = radio.value;
           break;
         }
       }
       if (selected === "yes") {
         set(ref(db, "officeAttendance/" + name), name)
           .then(() => {
-            console.log("Attendance updated for " + name);
             updateCellBackground(name, "yes");
           })
           .catch(error => console.error("Error updating attendance for " + name + ":", error));
       } else if (selected === "no") {
         remove(ref(db, "officeAttendance/" + name))
           .then(() => {
-            console.log("Attendance removed for " + name);
             updateCellBackground(name, "no");
           })
           .catch(error => console.error("Error removing attendance for " + name + ":", error));
@@ -154,12 +158,12 @@
           const yesRadio = document.querySelector(`input[name="officeStatus_${name}"][value="yes"]`);
           const noRadio = document.querySelector(`input[name="officeStatus_${name}"][value="no"]`);
           if (snapshot.hasChild(name)) {
-            if (yesRadio) { yesRadio.checked = true; }
-            if (noRadio) { noRadio.checked = false; }
+            if (yesRadio) yesRadio.checked = true;
+            if (noRadio) noRadio.checked = false;
             updateCellBackground(name, "yes");
           } else {
-            if (yesRadio) { yesRadio.checked = false; }
-            if (noRadio) { noRadio.checked = false; }
+            if (yesRadio) yesRadio.checked = false;
+            if (noRadio) noRadio.checked = false;
             updateCellBackground(name, "no");
           }
         });
@@ -219,12 +223,10 @@
         chooseNewOption.textContent = "Choose new restaurant";
         select.appendChild(chooseNewOption);
         
-        if (!currentValue || !Array.from(select.options).some(opt => opt.value === currentValue)) {
-          select.value = "Choose New";
-        } else {
-          select.value = currentValue;
-        }
-        console.log("Restaurant dropdown updated. Current selection:", select.value);
+        select.value = currentValue && Array.from(select.options).some(opt => opt.value === currentValue)
+          ? currentValue
+          : "Choose New";
+          
         if (select.value === "Choose New") {
           handleRestaurantSelection();
         }
@@ -233,15 +235,9 @@
 
     function handleRestaurantSelection() {
       const select = document.getElementById("restaurant");
-      console.log("handleRestaurantSelection triggered. Current selection:", select.value);
       const newRestaurantContainer = document.getElementById("newRestaurantContainer");
-      if (!newRestaurantContainer) {
-        console.error("New restaurant container not found.");
-        return;
-      }
       newRestaurantContainer.innerHTML = "";
       if (select.value === "Choose New") {
-        console.log("User selected 'Choose New'. Creating input field.");
         const newInput = document.createElement("input");
         newInput.type = "text";
         newInput.id = "newRestaurantInput";
@@ -250,12 +246,10 @@
         addButton.id = "addRestaurantButton";
         addButton.textContent = "Add";
         addButton.onclick = function() {
-          console.log("Add button clicked. Input value:", newInput.value);
           const newRestaurant = newInput.value.trim();
           if (newRestaurant) {
             push(ref(db, "restaurants"), newRestaurant)
               .then(() => {
-                console.log("New restaurant added:", newRestaurant);
                 newRestaurantContainer.innerHTML = "";
                 select.value = newRestaurant;
               })
@@ -289,15 +283,116 @@
     window.pickRandomPerson = pickRandomPerson;
     window.clearOfficeData = clearOfficeData;
   </script>
+</head>
+<body>
+  <h1>Lunch!</h1>
+  <!-- Clock Display -->
+  <div id="clock"></div>
   
-  <!-- End of Firebase and Lunch! app code -->
+  <!-- Office Attendance Section -->
+  <h2>Office Attendance</h2>
+  <table id="attendanceTable">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>In Office?</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td id="nameCell_Alec">Alec</td>
+        <td>
+          <label>
+            <input type="radio" name="officeStatus_Alec" value="yes" onclick="updateAttendanceFor('Alec')">
+            Yes
+          </label>
+          <label>
+            <input type="radio" name="officeStatus_Alec" value="no" onclick="updateAttendanceFor('Alec')">
+            No
+          </label>
+        </td>
+      </tr>
+      <tr>
+        <td id="nameCell_Chai">Chai</td>
+        <td>
+          <label>
+            <input type="radio" name="officeStatus_Chai" value="yes" onclick="updateAttendanceFor('Chai')">
+            Yes
+          </label>
+          <label>
+            <input type="radio" name="officeStatus_Chai" value="no" onclick="updateAttendanceFor('Chai')">
+            No
+          </label>
+        </td>
+      </tr>
+      <tr>
+        <td id="nameCell_Cole">Cole</td>
+        <td>
+          <label>
+            <input type="radio" name="officeStatus_Cole" value="yes" onclick="updateAttendanceFor('Cole')">
+            Yes
+          </label>
+          <label>
+            <input type="radio" name="officeStatus_Cole" value="no" onclick="updateAttendanceFor('Cole')">
+            No
+          </label>
+        </td>
+      </tr>
+      <tr>
+        <td id="nameCell_Denis">Denis</td>
+        <td>
+          <label>
+            <input type="radio" name="officeStatus_Denis" value="yes" onclick="updateAttendanceFor('Denis')">
+            Yes
+          </label>
+          <label>
+            <input type="radio" name="officeStatus_Denis" value="no" onclick="updateAttendanceFor('Denis')">
+            No
+          </label>
+        </td>
+      </tr>
+      <tr>
+        <td id="nameCell_Hunter">Hunter</td>
+        <td>
+          <label>
+            <input type="radio" name="officeStatus_Hunter" value="yes" onclick="updateAttendanceFor('Hunter')">
+            Yes
+          </label>
+          <label>
+            <input type="radio" name="officeStatus_Hunter" value="no" onclick="updateAttendanceFor('Hunter')">
+            No
+          </label>
+        </td>
+      </tr>
+      <tr>
+        <td id="nameCell_Pete">Pete</td>
+        <td>
+          <label>
+            <input type="radio" name="officeStatus_Pete" value="yes" onclick="updateAttendanceFor('Pete')">
+            Yes
+          </label>
+          <label>
+            <input type="radio" name="officeStatus_Pete" value="no" onclick="updateAttendanceFor('Pete')">
+            No
+          </label>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+  <button onclick="pickRandomPerson()">Pick Random Person for Lunch</button>
+  <div id="selectedPerson"><b>???</b></div>
   
-  <!-- New Section: Roulette Wheel -->
+  <!-- Roulette Wheel Section -->
   <h2>Roulette Wheel</h2>
-  <!-- Pointer arrow above the wheel -->
   <div id="pointer"></div>
-  <!-- Canvas for the roulette wheel -->
   <canvas id="rouletteWheel" width="400" height="400"></canvas>
+  
+  <!-- Lunch Options (Restaurant Dropdown) -->
+  <h2>Lunch Options</h2>
+  <select id="restaurant" onchange="handleRestaurantSelection()"></select>
+  <div id="newRestaurantContainer"></div>
+  
+  <!-- Roulette Wheel Script (Non-module) -->
   <script>
     // Roulette wheel integration:
     const rouletteCanvas = document.getElementById("rouletteWheel");
@@ -305,7 +400,8 @@
     const rouletteCenterX = rouletteCanvas.width / 2;
     const rouletteCenterY = rouletteCanvas.height / 2;
     const rouletteRadius = Math.min(rouletteCenterX, rouletteCenterY) - 20;
-    const rouletteSectors = persons.length; // Use the persons array from above.
+    // Use the global persons array:
+    const rouletteSectors = window.persons.length;
     const rouletteSectorAngle = 2 * Math.PI / rouletteSectors;
     
     let rouletteCurrentAngle = 0;
@@ -329,7 +425,7 @@
         rouletteCtx.textAlign = "right";
         rouletteCtx.fillStyle = "#000";
         rouletteCtx.font = "16px Arial";
-        rouletteCtx.fillText(persons[i], rouletteRadius - 10, 10);
+        rouletteCtx.fillText(window.persons[i], rouletteRadius - 10, 10);
         rouletteCtx.restore();
       }
     }
@@ -355,7 +451,7 @@
           // Adjust for the pointer at the top (π/2).
           const pointerAngle = (2 * Math.PI + Math.PI/2 - normalizedAngle) % (2 * Math.PI);
           const winnerIndex = Math.floor(pointerAngle / rouletteSectorAngle);
-          const winner = persons[winnerIndex];
+          const winner = window.persons[winnerIndex];
           alert("Winner: " + winner);
         }
       }
