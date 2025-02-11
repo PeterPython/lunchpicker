@@ -37,11 +37,11 @@
       border-radius: 50%;
       display: block;
     }
-    /* Pointer styling: Positioned so its tip is exactly on the circle's border and points inward */
+    /* Pointer styling: Positioned so its tip is on the circle's border and points inward */
     #pointer {
       position: absolute;
-      /* The wheel is drawn in a 400x400 canvas. With a radius of (200 - 20 = 180) the circle’s top edge is at 20px.
-         With a triangle height of 30px, setting top: -10px makes the tip appear at 20px. */
+      /* With a 400x400 canvas and a circle radius of (200-20=180), the top edge is at 20px.
+         A triangle with a 30px border-bottom, when set to top: -10px, will have its tip at 20px. */
       top: -10px;
       left: 50%;
       transform: translateX(-50%);
@@ -75,34 +75,30 @@
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
 
-    // Expose Firebase functions & the db to the global window for non‑module scripts.
+    // Expose Firebase functions & db to global window for non‑module scripts.
     window.db = db;
     window.ref = ref;
     window.set = set;
     window.onValue = onValue;
 
-    // Global flag to ensure auto-selection happens only once.
+    // Global flag for auto-selection
     let autoSelectionMade = false;
 
-    // Full list of names (if needed elsewhere)
+    // List of names (for reference)
     const persons = ["Alec", "Chai", "Cole", "Denis", "Hunter", "Pete"];
-    window.persons = persons; // Exposed globally
+    window.persons = persons;
 
-    /* ====================================
-       Clock & Auto-Selection Functionality
-       ==================================== */
+    // Update clock function
     function updateClock() {
       const clockElement = document.getElementById("clock");
       if (!clockElement) return;
       const options = { timeZone: 'America/New_York', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true };
       const timeString = new Intl.DateTimeFormat('en-US', options).format(new Date());
       clockElement.textContent = "Time: " + timeString;
-      
+
       const parts = timeString.split(':');
       const hourPart = parts[0].replace(/\D/g, '');
       const hour = parseInt(hourPart, 10);
-      
-      // Auto-select a random person at 10am or later if none has been chosen.
       if (hour >= 10 && !autoSelectionMade) {
         pickRandomPerson();
         autoSelectionMade = true;
@@ -117,9 +113,7 @@
       });
     }
 
-    /* ====================================
-       "Eating in Office" Table Functions
-       ==================================== */
+    // Update cell background for the attendance table.
     function updateCellBackground(name, selected) {
       const cell = document.getElementById("nameCell_" + name);
       if (cell) {
@@ -127,6 +121,7 @@
       }
     }
 
+    // Update attendance for a person and force an immediate roulette update.
     function updateAttendanceFor(name) {
       const radios = document.getElementsByName("officeStatus_" + name);
       let selected = "";
@@ -138,11 +133,17 @@
       }
       if (selected === "yes") {
         set(ref(db, "officeAttendance/" + name), name)
-          .then(() => updateCellBackground(name, "yes"))
+          .then(() => {
+            updateCellBackground(name, "yes");
+            updateRouletteWheel(); // update roulette wheel immediately
+          })
           .catch(error => console.error("Error updating attendance for " + name + ":", error));
       } else if (selected === "no") {
         remove(ref(db, "officeAttendance/" + name))
-          .then(() => updateCellBackground(name, "no"))
+          .then(() => {
+            updateCellBackground(name, "no");
+            updateRouletteWheel(); // update roulette wheel immediately
+          })
           .catch(error => console.error("Error removing attendance for " + name + ":", error));
       }
     }
@@ -166,7 +167,7 @@
       });
     }
 
-    // Picks a random person from those marked "yes" and persists the selection.
+    // Pick a random person from those marked "yes" and persist the selection.
     function pickRandomPerson() {
       const rows = document.querySelectorAll("#attendanceTable tbody tr");
       const inOfficeNames = [];
@@ -285,7 +286,7 @@
   <!-- Clock Display -->
   <div id="clock"></div>
   
-  <!-- Table for "Eating in office?" (no heading above the table) -->
+  <!-- Table for "Eating in office?" -->
   <table id="attendanceTable">
     <thead>
       <tr>
@@ -374,11 +375,9 @@
       </tr>
     </tbody>
   </table>
-  <!-- (The selected name display below the table has been removed.) -->
   
-  <!-- Roulette Wheel Section (the "Roulette Wheel" heading has been removed) -->
+  <!-- Roulette Wheel Section (no heading) -->
   <div id="rouletteContainer">
-    <!-- Pointer positioned on the edge so its tip is exactly on the circle's border and points inward -->
     <div id="pointer"></div>
     <canvas id="rouletteWheel" width="400" height="400"></canvas>
   </div>
@@ -401,6 +400,7 @@
           names.push(name);
         }
       });
+      console.log("Attending names:", names);
       return names;
     }
     
@@ -456,7 +456,7 @@
       drawRouletteWheel(attendees);
     }
     
-    // Persist the UI state by listening for changes to the saved currentAngle.
+    // Persist the UI state by listening for changes to rouletteState/currentAngle.
     function attachRouletteStateListener() {
       const rouletteStateRef = window.ref(window.db, "rouletteState/currentAngle");
       window.onValue(rouletteStateRef, (snapshot) => {
@@ -506,7 +506,7 @@
           const targetRotationMod = (2 * Math.PI + pointerAngle - desiredCenter) % (2 * Math.PI);
           const currentMod = rouletteCurrentAngle % (2 * Math.PI);
           let delta = targetRotationMod - currentMod;
-          // Always force a forward (clockwise) snap.
+          // Force a forward (clockwise) snap.
           if (delta < 0) {
             delta += 2 * Math.PI;
           }
@@ -525,7 +525,6 @@
             if (progressSnap < 1) {
               requestAnimationFrame(animateSnap);
             } else {
-              // Persist the final angle so all browsers see the same UI state.
               window.set(window.ref(window.db, "rouletteState/currentAngle"), rouletteCurrentAngle);
               alert("Winner: " + currentAttendees[winnerIndex]);
             }
@@ -541,7 +540,7 @@
       spinRouletteWheel(5000);
     });
     
-    // Optionally, update the wheel periodically in case attendance changes.
+    // Optionally update the wheel periodically in case attendance changes.
     setInterval(updateRouletteWheel, 2000);
   </script>
 </body>
