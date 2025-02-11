@@ -1,165 +1,548 @@
-<!-- Roulette Wheel Script -->
-<script>
-  window.addEventListener("DOMContentLoaded", function() {
-    // Returns an array of names from the attendance table for those who clicked "Yes"
-    function getAttendingNames() {
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Lunch!</title>
+  <style>
+    /* General styling */
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      background: #fafafa;
+      margin: 0;
+      padding: 20px;
+    }
+    h2 {
+      font-size: 2em;
+    }
+    /* Table styling */
+    table {
+      margin: 20px auto;
+      border-collapse: collapse;
+    }
+    table, th, td {
+      border: 1px solid #333;
+    }
+    th, td {
+      padding: 10px;
+    }
+    /* Roulette container styling */
+    #rouletteContainer {
+      position: relative;
+      display: inline-block;
+      margin: 20px auto;
+    }
+    #rouletteWheel {
+      border: 5px solid #333;
+      border-radius: 50%;
+      display: block;
+    }
+    /* Pointer styling */
+    #pointer {
+      position: absolute;
+      top: -10px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 0;
+      height: 0;
+      border-left: 20px solid transparent;
+      border-right: 20px solid transparent;
+      border-bottom: 30px solid #333;
+      pointer-events: none;
+    }
+  </style>
+  
+  <!-- Firebase & Main App Script (as a module) -->
+  <script type="module">
+    // Import Firebase modules
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.3.0/firebase-app.js";
+    import { getDatabase, ref, set, remove, push, onValue } from "https://www.gstatic.com/firebasejs/11.3.0/firebase-database.js";
+
+    // Firebase configuration (replace with your actual keys)
+    const firebaseConfig = {
+      apiKey: "AIzaSyAaihPMwzCZEYQV_pUaffWKqIqxubAlzkc",
+      authDomain: "lunch-beda3.firebaseapp.com",
+      projectId: "lunch-beda3",
+      storageBucket: "lunch-beda3.firebasestorage.app",
+      messagingSenderId: "888920791757",
+      appId: "1:888920791757:web:848f5a9ce1602e125c2784",
+      measurementId: "G-CDDYWJDDE6",
+      databaseURL: "https://lunch-beda3-default-rtdb.firebaseio.com/"
+    };
+
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    // Expose Firebase Database helper functions on the global window object.
+    window.db = db;
+    window.firebaseRef = ref;
+    window.firebaseSet = set;
+    window.firebaseOnValue = onValue;
+
+    // Global flag for auto-selection.
+    let autoSelectionMade = false;
+
+    // List of names (for reference)
+    const persons = ["Alec", "Chai", "Cole", "Denis", "Hunter", "Pete"];
+    window.persons = persons;
+
+    // Update clock function.
+    function updateClock() {
+      const clockElement = document.getElementById("clock");
+      if (!clockElement) return;
+      const options = { timeZone: 'America/New_York', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true };
+      const timeString = new Intl.DateTimeFormat('en-US', options).format(new Date());
+      clockElement.textContent = "Time: " + timeString;
+      
+      const parts = timeString.split(':');
+      const hourPart = parts[0].replace(/\D/g, '');
+      const hour = parseInt(hourPart, 10);
+      if (hour >= 10 && !autoSelectionMade) {
+        pickRandomPerson();
+        autoSelectionMade = true;
+      }
+    }
+
+    // Listener for persistent lunch selection.
+    function attachLunchSelectionListener() {
+      const lunchSelectionRef = window.firebaseRef(window.db, "lunchSelection/selectedPerson");
+      window.firebaseOnValue(lunchSelectionRef, (snapshot) => {
+        console.log("Selected person persisted:", snapshot.val());
+      });
+    }
+
+    // Update cell background in the attendance table.
+    function updateCellBackground(name, selected) {
+      const cell = document.getElementById("nameCell_" + name);
+      if (cell) {
+        cell.style.backgroundColor = selected === "yes" ? "green" : "";
+      }
+    }
+
+    // Update attendance for a person and force an immediate roulette update.
+    function updateAttendanceFor(name) {
+      const radios = document.getElementsByName("officeStatus_" + name);
+      let selected = "";
+      for (let radio of radios) {
+        if (radio.checked) {
+          selected = radio.value;
+          break;
+        }
+      }
+      if (selected === "yes") {
+        window.firebaseSet(window.firebaseRef(window.db, "officeAttendance/" + name), name)
+          .then(() => {
+            updateCellBackground(name, "yes");
+            // (Optionally update the roulette wheel immediately)
+          })
+          .catch(error => console.error("Error updating attendance for " + name + ":", error));
+      } else if (selected === "no") {
+        window.firebaseSet(window.firebaseRef(window.db, "officeAttendance/" + name), null)
+          .then(() => {
+            updateCellBackground(name, "no");
+            // (Optionally update the roulette wheel immediately)
+          })
+          .catch(error => console.error("Error removing attendance for " + name + ":", error));
+      }
+    }
+
+    function attachOfficeAttendanceListener() {
+      const officeAttendanceRef = window.firebaseRef(window.db, "officeAttendance");
+      window.firebaseOnValue(officeAttendanceRef, (snapshot) => {
+        persons.forEach(name => {
+          const yesRadio = document.querySelector(`input[name="officeStatus_${name}"][value="yes"]`);
+          const noRadio = document.querySelector(`input[name="officeStatus_${name}"][value="no"]`);
+          if (snapshot.hasChild(name)) {
+            if (yesRadio) yesRadio.checked = true;
+            if (noRadio) noRadio.checked = false;
+            updateCellBackground(name, "yes");
+          } else {
+            if (yesRadio) yesRadio.checked = false;
+            if (noRadio) noRadio.checked = false;
+            updateCellBackground(name, "no");
+          }
+        });
+      });
+    }
+
+    // Pick a random person from those marked "yes" and persist the selection.
+    function pickRandomPerson() {
       const rows = document.querySelectorAll("#attendanceTable tbody tr");
-      const names = [];
+      const inOfficeNames = [];
       rows.forEach(row => {
         const name = row.cells[0].textContent.trim();
         const yesRadio = row.querySelector(`input[name="officeStatus_${name}"][value="yes"]`);
         if (yesRadio && yesRadio.checked) {
-          names.push(name);
+          inOfficeNames.push(name);
         }
       });
-      console.log("Attending names:", names);
-      return names;
-    }
-    
-    const rouletteCanvas = document.getElementById("rouletteWheel");
-    const rouletteCtx = rouletteCanvas.getContext("2d");
-    const rouletteCenterX = rouletteCanvas.width / 2;
-    const rouletteCenterY = rouletteCanvas.height / 2;
-    const rouletteRadius = Math.min(rouletteCenterX, rouletteCenterY) - 20;
-    
-    let rouletteCurrentAngle = 0;
-    let currentAttendees = []; // Names used in the current spin.
-    let currentSectorAngle = 0;
-    let isSpinning = false; // Prevent starting multiple spins at once.
-    
-    // Draws the roulette wheel with each sector having a unique color.
-    function drawRouletteWheel(attendees) {
-      rouletteCtx.clearRect(0, 0, rouletteCanvas.width, rouletteCanvas.height);
-      if (attendees.length === 0) {
-        rouletteCtx.font = "20px Arial";
-        rouletteCtx.textAlign = "center";
-        rouletteCtx.fillText("No attendees selected", rouletteCenterX, rouletteCenterY);
-        return;
-      }
-      const sectors = attendees.length;
-      const sectorAngle = 2 * Math.PI / sectors;
-      
-      for (let i = 0; i < sectors; i++) {
-        const hue = i * (360 / sectors);
-        rouletteCtx.fillStyle = `hsl(${hue}, 80%, 50%)`;
-        
-        const startAngle = rouletteCurrentAngle + i * sectorAngle;
-        const endAngle = startAngle + sectorAngle;
-        rouletteCtx.beginPath();
-        rouletteCtx.moveTo(rouletteCenterX, rouletteCenterY);
-        rouletteCtx.arc(rouletteCenterX, rouletteCenterY, rouletteRadius, startAngle, endAngle);
-        rouletteCtx.closePath();
-        rouletteCtx.fill();
-        
-        // Draw the person's name within the sector.
-        rouletteCtx.save();
-        rouletteCtx.translate(rouletteCenterX, rouletteCenterY);
-        rouletteCtx.rotate(startAngle + sectorAngle / 2);
-        rouletteCtx.textAlign = "right";
-        rouletteCtx.fillStyle = "#000";
-        rouletteCtx.font = "16px Arial";
-        rouletteCtx.fillText(attendees[i], rouletteRadius - 10, 10);
-        rouletteCtx.restore();
+      if (inOfficeNames.length > 0) {
+        const randomIndex = Math.floor(Math.random() * inOfficeNames.length);
+        const selected = inOfficeNames[randomIndex];
+        window.firebaseSet(window.firebaseRef(window.db, "lunchSelection/selectedPerson"), selected)
+          .then(() => console.log("Random person selected and persisted:", selected))
+          .catch(error => console.error("Error persisting selection:", error));
+      } else {
+        window.firebaseSet(window.firebaseRef(window.db, "lunchSelection/selectedPerson"), "???");
       }
     }
-    
-    // Redraws the wheel using the current attendance.
-    function updateRouletteWheel() {
-      const attendees = getAttendingNames();
-      drawRouletteWheel(attendees);
+
+    function clearOfficeData() {
+      window.firebaseSet(window.firebaseRef(window.db, "officeAttendance"), null)
+        .then(() => console.log("Office attendance cleared"))
+        .catch(error => console.error("Error clearing office attendance:", error));
     }
-    
-    // Persist the UI state by listening for changes to "rouletteState/currentAngle."
-    function attachRouletteStateListener() {
-      const rouletteStateRef = window.firebaseRef(window.db, "rouletteState/currentAngle");
-      window.firebaseOnValue(rouletteStateRef, (snapshot) => {
-        const angle = snapshot.val();
-        if (angle !== null) {
-          rouletteCurrentAngle = angle;
-          updateRouletteWheel();
+
+    /* ====================================
+       Restaurant Selector Functions
+       ==================================== */
+    function attachRestaurantListener() {
+      const restaurantRef = window.firebaseRef(window.db, "restaurants");
+      window.firebaseOnValue(restaurantRef, (snapshot) => {
+        const select = document.getElementById("restaurant");
+        if (!select) return;
+        const currentValue = select.value;
+        select.innerHTML = "";
+        if (snapshot.exists()) {
+          snapshot.forEach((childSnapshot) => {
+            const restaurant = childSnapshot.val();
+            const option = document.createElement("option");
+            option.value = restaurant;
+            option.textContent = restaurant;
+            select.appendChild(option);
+          });
         }
-      });
-    }
-    attachRouletteStateListener();
-    
-    // Initially draw the wheel.
-    updateRouletteWheel();
-    
-    // Spins the wheel and then snaps it so that a sector’s center is aligned with the pointer (at -π/2).
-    function spinRouletteWheel(duration = 5000) {
-      if (isSpinning) return;
-      isSpinning = true;
-      console.log("Spin started");
-      const attendees = getAttendingNames();
-      if (attendees.length === 0) {
-        alert("No attendees selected");
-        isSpinning = false;
-        return;
-      }
-      currentAttendees = attendees;
-      const sectors = currentAttendees.length;
-      currentSectorAngle = 2 * Math.PI / sectors;
-      
-      const startTime = performance.now();
-      const initialAngle = rouletteCurrentAngle;
-      const totalSpins = 10; // total full rotations
-      
-      // Main spin animation.
-      function animateRoulette(now) {
-        const elapsed = now - startTime;
-        const progress = Math.min(elapsed / duration, 1);
-        const easedProgress = 1 - Math.pow(1 - progress, 3);
-        rouletteCurrentAngle = initialAngle + easedProgress * totalSpins * 2 * Math.PI;
-        drawRouletteWheel(currentAttendees);
-        if (progress < 1) {
-          requestAnimationFrame(animateRoulette);
-        } else {
-          // Calculate which sector’s center is closest to the pointer (located at -π/2)
-          const pointerAngle = -Math.PI / 2;
-          const normalizedAngle = rouletteCurrentAngle % (2 * Math.PI);
-          let pointerPos = (2 * Math.PI + pointerAngle - normalizedAngle) % (2 * Math.PI);
-          // Use Math.floor so that the sector whose center is aligned wins.
-          let winnerIndex = Math.floor(pointerPos / currentSectorAngle) % sectors;
-          const desiredCenter = (winnerIndex + 0.5) * currentSectorAngle;
-          const targetRotationMod = (2 * Math.PI + pointerAngle - desiredCenter) % (2 * Math.PI);
-          const currentMod = rouletteCurrentAngle % (2 * Math.PI);
-          let delta = targetRotationMod - currentMod;
-          // Force a forward (clockwise) snap.
-          if (delta < 0) {
-            delta += 2 * Math.PI;
-          }
-          const finalTargetAngle = rouletteCurrentAngle + delta;
+        // Append an extra option for adding a new restaurant.
+        const chooseNewOption = document.createElement("option");
+        chooseNewOption.value = "Choose New";
+        chooseNewOption.textContent = "Choose new restaurant";
+        select.appendChild(chooseNewOption);
+        
+        select.value = currentValue && Array.from(select.options).some(opt => opt.value === currentValue)
+          ? currentValue
+          : "Choose New";
           
-          // Snap animation to align the winning sector.
-          const snapDuration = 1000;
-          const snapStartAngle = rouletteCurrentAngle;
-          const snapStartTime = performance.now();
-          function animateSnap(nowSnap) {
-            const elapsedSnap = nowSnap - snapStartTime;
-            const progressSnap = Math.min(elapsedSnap / snapDuration, 1);
-            const easedSnap = 1 - Math.pow(1 - progressSnap, 3);
-            rouletteCurrentAngle = snapStartAngle + (finalTargetAngle - snapStartAngle) * easedSnap;
-            drawRouletteWheel(currentAttendees);
-            if (progressSnap < 1) {
-              requestAnimationFrame(animateSnap);
-            } else {
-              window.firebaseSet(window.firebaseRef(window.db, "rouletteState/currentAngle"), rouletteCurrentAngle);
-              alert("Winner: " + currentAttendees[winnerIndex]);
-              isSpinning = false;
-            }
+        if (select.value === "Choose New") {
+          handleRestaurantSelection();
+        }
+      });
+    }
+
+    function handleRestaurantSelection() {
+      const select = document.getElementById("restaurant");
+      const newRestaurantContainer = document.getElementById("newRestaurantContainer");
+      newRestaurantContainer.innerHTML = "";
+      if (select.value === "Choose New") {
+        const newInput = document.createElement("input");
+        newInput.type = "text";
+        newInput.id = "newRestaurantInput";
+        newInput.placeholder = "New restaurant name";
+        const addButton = document.createElement("button");
+        addButton.id = "addRestaurantButton";
+        addButton.textContent = "Add";
+        addButton.onclick = function() {
+          const newRestaurant = newInput.value.trim();
+          if (newRestaurant) {
+            push(window.firebaseRef(window.db, "restaurants"), newRestaurant)
+              .then(() => {
+                newRestaurantContainer.innerHTML = "";
+                select.value = newRestaurant;
+              })
+              .catch(error => console.error("Error adding new restaurant:", error));
+          } else {
+            alert("Please enter a restaurant name.");
           }
-          requestAnimationFrame(animateSnap);
+        };
+        newRestaurantContainer.appendChild(newInput);
+        newRestaurantContainer.appendChild(addButton);
+        newInput.focus();
+      }
+    }
+
+    function startClock() {
+      setInterval(updateClock, 1000);
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      attachOfficeAttendanceListener();
+      attachRestaurantListener();
+      attachLunchSelectionListener();
+      startClock();
+    });
+
+    // Expose functions for inline event handling.
+    window.updateAttendanceFor = updateAttendanceFor;
+    window.handleRestaurantSelection = handleRestaurantSelection;
+    window.pickRandomPerson = pickRandomPerson;
+    window.clearOfficeData = clearOfficeData;
+  </script>
+</head>
+<body>
+  <h1>Lunch!</h1>
+  <!-- Clock Display -->
+  <div id="clock"></div>
+  
+  <!-- Table for "Eating in office?" -->
+  <table id="attendanceTable">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Eating in office?</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td id="nameCell_Alec">Alec</td>
+        <td>
+          <label>
+            <input type="radio" name="officeStatus_Alec" value="yes" onclick="updateAttendanceFor('Alec')">
+            Yes
+          </label>
+          <label>
+            <input type="radio" name="officeStatus_Alec" value="no" onclick="updateAttendanceFor('Alec')">
+            No
+          </label>
+        </td>
+      </tr>
+      <tr>
+        <td id="nameCell_Chai">Chai</td>
+        <td>
+          <label>
+            <input type="radio" name="officeStatus_Chai" value="yes" onclick="updateAttendanceFor('Chai')">
+            Yes
+          </label>
+          <label>
+            <input type="radio" name="officeStatus_Chai" value="no" onclick="updateAttendanceFor('Chai')">
+            No
+          </label>
+        </td>
+      </tr>
+      <tr>
+        <td id="nameCell_Cole">Cole</td>
+        <td>
+          <label>
+            <input type="radio" name="officeStatus_Cole" value="yes" onclick="updateAttendanceFor('Cole')">
+            Yes
+          </label>
+          <label>
+            <input type="radio" name="officeStatus_Cole" value="no" onclick="updateAttendanceFor('Cole')">
+            No
+          </label>
+        </td>
+      </tr>
+      <tr>
+        <td id="nameCell_Denis">Denis</td>
+        <td>
+          <label>
+            <input type="radio" name="officeStatus_Denis" value="yes" onclick="updateAttendanceFor('Denis')">
+            Yes
+          </label>
+          <label>
+            <input type="radio" name="officeStatus_Denis" value="no" onclick="updateAttendanceFor('Denis')">
+            No
+          </label>
+        </td>
+      </tr>
+      <tr>
+        <td id="nameCell_Hunter">Hunter</td>
+        <td>
+          <label>
+            <input type="radio" name="officeStatus_Hunter" value="yes" onclick="updateAttendanceFor('Hunter')">
+            Yes
+          </label>
+          <label>
+            <input type="radio" name="officeStatus_Hunter" value="no" onclick="updateAttendanceFor('Hunter')">
+            No
+          </label>
+        </td>
+      </tr>
+      <tr>
+        <td id="nameCell_Pete">Pete</td>
+        <td>
+          <label>
+            <input type="radio" name="officeStatus_Pete" value="yes" onclick="updateAttendanceFor('Pete')">
+            Yes
+          </label>
+          <label>
+            <input type="radio" name="officeStatus_Pete" value="no" onclick="updateAttendanceFor('Pete')">
+            No
+          </label>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+  
+  <!-- Roulette Wheel Section -->
+  <div id="rouletteContainer">
+    <div id="pointer"></div>
+    <canvas id="rouletteWheel" width="400" height="400"></canvas>
+  </div>
+  
+  <!-- Lunch Options (Restaurant Dropdown) -->
+  <h2>Lunch Options</h2>
+  <select id="restaurant" onchange="handleRestaurantSelection()"></select>
+  <div id="newRestaurantContainer"></div>
+  
+  <!-- Roulette Wheel Script -->
+  <script>
+    // Wrap roulette wheel code in DOMContentLoaded to ensure all elements are loaded.
+    window.addEventListener("DOMContentLoaded", function() {
+      // Returns an array of names from the attendance table for those who clicked "Yes"
+      function getAttendingNames() {
+        const rows = document.querySelectorAll("#attendanceTable tbody tr");
+        const names = [];
+        rows.forEach(row => {
+          const name = row.cells[0].textContent.trim();
+          const yesRadio = row.querySelector(`input[name="officeStatus_${name}"][value="yes"]`);
+          if (yesRadio && yesRadio.checked) {
+            names.push(name);
+          }
+        });
+        console.log("Attending names:", names);
+        return names;
+      }
+      
+      const rouletteCanvas = document.getElementById("rouletteWheel");
+      if (!rouletteCanvas) {
+        console.error("rouletteWheel element not found!");
+        return;
+      }
+      const rouletteCtx = rouletteCanvas.getContext("2d");
+      const rouletteCenterX = rouletteCanvas.width / 2;
+      const rouletteCenterY = rouletteCanvas.height / 2;
+      const rouletteRadius = Math.min(rouletteCenterX, rouletteCenterY) - 20;
+      
+      let rouletteCurrentAngle = 0;
+      let currentAttendees = []; // Names used in the current spin.
+      let currentSectorAngle = 0;
+      let isSpinning = false; // Prevent multiple spins at once.
+      
+      // Draws the roulette wheel with each sector having a unique color.
+      function drawRouletteWheel(attendees) {
+        rouletteCtx.clearRect(0, 0, rouletteCanvas.width, rouletteCanvas.height);
+        if (attendees.length === 0) {
+          rouletteCtx.font = "20px Arial";
+          rouletteCtx.textAlign = "center";
+          rouletteCtx.fillText("No attendees selected", rouletteCenterX, rouletteCenterY);
+          return;
+        }
+        const sectors = attendees.length;
+        const sectorAngle = 2 * Math.PI / sectors;
+        for (let i = 0; i < sectors; i++) {
+          const hue = i * (360 / sectors);
+          rouletteCtx.fillStyle = `hsl(${hue}, 80%, 50%)`;
+          const startAngle = rouletteCurrentAngle + i * sectorAngle;
+          const endAngle = startAngle + sectorAngle;
+          rouletteCtx.beginPath();
+          rouletteCtx.moveTo(rouletteCenterX, rouletteCenterY);
+          rouletteCtx.arc(rouletteCenterX, rouletteCenterY, rouletteRadius, startAngle, endAngle);
+          rouletteCtx.closePath();
+          rouletteCtx.fill();
+          rouletteCtx.save();
+          rouletteCtx.translate(rouletteCenterX, rouletteCenterY);
+          rouletteCtx.rotate(startAngle + sectorAngle / 2);
+          rouletteCtx.textAlign = "right";
+          rouletteCtx.fillStyle = "#000";
+          rouletteCtx.font = "16px Arial";
+          rouletteCtx.fillText(attendees[i], rouletteRadius - 10, 10);
+          rouletteCtx.restore();
         }
       }
-      requestAnimationFrame(animateRoulette);
-    }
-    
-    // Spin the wheel when the canvas is clicked.
-    rouletteCanvas.addEventListener("click", function() {
-      spinRouletteWheel(5000);
+      
+      // Redraws the wheel using the current attendance.
+      function updateRouletteWheel() {
+        const attendees = getAttendingNames();
+        drawRouletteWheel(attendees);
+      }
+      
+      // Persist the UI state by listening for changes to "rouletteState/currentAngle."
+      function attachRouletteStateListener() {
+        const rouletteStateRef = window.firebaseRef(window.db, "rouletteState/currentAngle");
+        window.firebaseOnValue(rouletteStateRef, (snapshot) => {
+          const angle = snapshot.val();
+          if (angle !== null) {
+            rouletteCurrentAngle = angle;
+            updateRouletteWheel();
+          }
+        });
+      }
+      attachRouletteStateListener();
+      
+      updateRouletteWheel();
+      
+      // Spins the wheel and then snaps it so that a sector’s center is aligned with the pointer (at -π/2).
+      function spinRouletteWheel(duration = 5000) {
+        if (isSpinning) return;
+        isSpinning = true;
+        console.log("Spin started");
+        const attendees = getAttendingNames();
+        if (attendees.length === 0) {
+          alert("No attendees selected");
+          isSpinning = false;
+          return;
+        }
+        currentAttendees = attendees;
+        const sectors = currentAttendees.length;
+        currentSectorAngle = 2 * Math.PI / sectors;
+        
+        const startTime = performance.now();
+        const initialAngle = rouletteCurrentAngle;
+        const totalSpins = 10; // total full rotations
+        
+        function animateRoulette(now) {
+          const elapsed = now - startTime;
+          const progress = Math.min(elapsed / duration, 1);
+          const easedProgress = 1 - Math.pow(1 - progress, 3);
+          rouletteCurrentAngle = initialAngle + easedProgress * totalSpins * 2 * Math.PI;
+          drawRouletteWheel(currentAttendees);
+          if (progress < 1) {
+            requestAnimationFrame(animateRoulette);
+          } else {
+            const pointerAngle = -Math.PI / 2;
+            const normalizedAngle = rouletteCurrentAngle % (2 * Math.PI);
+            let pointerPos = (2 * Math.PI + pointerAngle - normalizedAngle) % (2 * Math.PI);
+            let winnerIndex = Math.floor(pointerPos / currentSectorAngle) % sectors;
+            const desiredCenter = (winnerIndex + 0.5) * currentSectorAngle;
+            const targetRotationMod = (2 * Math.PI + pointerAngle - desiredCenter) % (2 * Math.PI);
+            const currentMod = rouletteCurrentAngle % (2 * Math.PI);
+            let delta = targetRotationMod - currentMod;
+            if (delta < 0) {
+              delta += 2 * Math.PI;
+            }
+            const finalTargetAngle = rouletteCurrentAngle + delta;
+            
+            const snapDuration = 1000;
+            const snapStartAngle = rouletteCurrentAngle;
+            const snapStartTime = performance.now();
+            function animateSnap(nowSnap) {
+              const elapsedSnap = nowSnap - snapStartTime;
+              const progressSnap = Math.min(elapsedSnap / snapDuration, 1);
+              const easedSnap = 1 - Math.pow(1 - progressSnap, 3);
+              rouletteCurrentAngle = snapStartAngle + (finalTargetAngle - snapStartAngle) * easedSnap;
+              drawRouletteWheel(currentAttendees);
+              if (progressSnap < 1) {
+                requestAnimationFrame(animateSnap);
+              } else {
+                window.firebaseSet(window.firebaseRef(window.db, "rouletteState/currentAngle"), rouletteCurrentAngle);
+                alert("Winner: " + currentAttendees[winnerIndex]);
+                isSpinning = false;
+              }
+            }
+            requestAnimationFrame(animateSnap);
+          }
+        }
+        requestAnimationFrame(animateRoulette);
+      }
+      
+      // Spin the wheel when the canvas is clicked.
+      rouletteCanvas.addEventListener("click", function() {
+        spinRouletteWheel(5000);
+      });
+      
+      // Optionally, update the wheel periodically.
+      // setInterval(updateRouletteWheel, 2000);
     });
-    
-    // (Optional) If you want periodic updates outside of the spin animation, you can re-enable this.
-    // setInterval(updateRouletteWheel, 2000);
-  });
-</script>
+  </script>
+</body>
+</html>
