@@ -37,13 +37,11 @@
       border-radius: 50%;
       display: block;
     }
-    /* Pointer styling: Positioned so that its tip is on the top edge of the wheel */
+    /* Pointer styling: Positioned so that its tip is on the top edge of the wheel (at the circle’s border) and points inward */
     #pointer {
       position: absolute;
-      /* 
-         The roulette wheel is drawn with a center at (200,200) and a radius of 180 
-         (since canvas is 400x400 and we subtract 20). Hence, the top edge is at 200-180 = 20px.
-         With a triangle height of 30px (via border-bottom), setting top to -10px makes the tip land at 20px.
+      /* The wheel is 400x400 with a 20px margin from the edge, so the circle’s top edge is at 20px.
+         With the triangle’s border-bottom of 30px, setting top: -10px places its tip at 20px.
       */
       top: -10px; 
       left: 50%;
@@ -55,6 +53,7 @@
       border-bottom: 30px solid #333;
     }
   </style>
+  
   <!-- Firebase & Main App Script (as a module) -->
   <script type="module">
     // Import Firebase modules
@@ -77,6 +76,12 @@
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
 
+    // Expose some Firebase functions & the db to the global window so that non‑module scripts can use them.
+    window.db = db;
+    window.ref = ref;
+    window.set = set;
+    window.onValue = onValue;
+
     // Global flag to ensure auto-selection happens only once.
     let autoSelectionMade = false;
 
@@ -98,7 +103,7 @@
       const hourPart = parts[0].replace(/\D/g, '');
       const hour = parseInt(hourPart, 10);
       
-      // Auto-select a random person at 10am or later if no one is selected.
+      // Auto-select a random person at 10am or later if none has been chosen.
       if (hour >= 10 && !autoSelectionMade) {
         pickRandomPerson();
         autoSelectionMade = true;
@@ -109,13 +114,12 @@
     function attachLunchSelectionListener() {
       const lunchSelectionRef = ref(db, "lunchSelection/selectedPerson");
       onValue(lunchSelectionRef, (snapshot) => {
-        // In this version, the selected name display below the table has been removed.
         console.log("Selected person persisted:", snapshot.val());
       });
     }
 
     /* ====================================
-       Eating in Office Table Functions
+       "Eating in Office" Table Functions
        ==================================== */
     function updateCellBackground(name, selected) {
       const cell = document.getElementById("nameCell_" + name);
@@ -282,7 +286,7 @@
   <!-- Clock Display -->
   <div id="clock"></div>
   
-  <!-- Table for "Eating in office?" (Note: the "Office Attendance" heading has been removed) -->
+  <!-- Table for "Eating in office?" (no heading above the table) -->
   <table id="attendanceTable">
     <thead>
       <tr>
@@ -371,12 +375,12 @@
       </tr>
     </tbody>
   </table>
-  <!-- The selected name display has been removed -->
+  <!-- (The selected name display below the table has been removed.) -->
   
   <!-- Roulette Wheel Section -->
   <h2>Roulette Wheel</h2>
   <div id="rouletteContainer">
-    <!-- The pointer is now positioned on the top edge of the wheel so that its tip is at the circle's border and points inward -->
+    <!-- Pointer positioned on the edge so its tip is exactly on the circle's border and points inward -->
     <div id="pointer"></div>
     <canvas id="rouletteWheel" width="400" height="400"></canvas>
   </div>
@@ -386,9 +390,9 @@
   <select id="restaurant" onchange="handleRestaurantSelection()"></select>
   <div id="newRestaurantContainer"></div>
   
-  <!-- Roulette Wheel Script (Non-module) -->
+  <!-- Roulette Wheel Script -->
   <script>
-    // Returns an array of names from the attendance table for those who clicked "Yes"
+    // This function returns an array of names from the attendance table for those who clicked "Yes"
     function getAttendingNames() {
       const rows = document.querySelectorAll("#attendanceTable tbody tr");
       const names = [];
@@ -412,7 +416,7 @@
     let currentAttendees = []; // Names used in the current spin.
     let currentSectorAngle = 0;
     
-    // Draws the roulette wheel using a unique color for each sector.
+    // Draws the roulette wheel with each sector having a unique color.
     function drawRouletteWheel(attendees) {
       rouletteCtx.clearRect(0, 0, rouletteCanvas.width, rouletteCanvas.height);
       if (attendees.length === 0) {
@@ -425,7 +429,6 @@
       const sectorAngle = 2 * Math.PI / sectors;
       
       for (let i = 0; i < sectors; i++) {
-        // Each sector gets its own hue.
         const hue = i * (360 / sectors);
         rouletteCtx.fillStyle = `hsl(${hue}, 80%, 50%)`;
         
@@ -437,7 +440,7 @@
         rouletteCtx.closePath();
         rouletteCtx.fill();
         
-        // Draw the person's name in the sector.
+        // Draw the person's name within the sector.
         rouletteCtx.save();
         rouletteCtx.translate(rouletteCenterX, rouletteCenterY);
         rouletteCtx.rotate(startAngle + sectorAngle / 2);
@@ -449,16 +452,29 @@
       }
     }
     
-    // Redraws the wheel based on the current attendance.
+    // Redraws the wheel using the current attendance.
     function updateRouletteWheel() {
       const attendees = getAttendingNames();
       drawRouletteWheel(attendees);
     }
     
+    // Persist the UI state by listening for changes to the saved currentAngle.
+    function attachRouletteStateListener() {
+      const rouletteStateRef = window.ref(window.db, "rouletteState/currentAngle");
+      window.onValue(rouletteStateRef, (snapshot) => {
+        const angle = snapshot.val();
+        if (angle !== null) {
+          rouletteCurrentAngle = angle;
+          updateRouletteWheel();
+        }
+      });
+    }
+    attachRouletteStateListener();
+    
     // Initially draw the wheel.
     updateRouletteWheel();
     
-    // Spins the wheel and then snaps it so that a sector's center is exactly aligned with the pointer.
+    // Spins the wheel and snaps it so that a sector's center is aligned with the pointer (which is at -π/2).
     function spinRouletteWheel(duration = 5000) {
       const attendees = getAttendingNames();
       if (attendees.length === 0) {
@@ -483,13 +499,11 @@
         if (progress < 1) {
           requestAnimationFrame(animateRoulette);
         } else {
-          // Determine which sector's center is closest to the pointer.
-          // We assume the pointer's tip is on the top edge (at angle -π/2).
+          // Determine which sector’s center is closest to the pointer at -π/2.
           const pointerAngle = -Math.PI / 2;
           const normalizedAngle = rouletteCurrentAngle % (2 * Math.PI);
           let pointerPos = (2 * Math.PI + pointerAngle - normalizedAngle) % (2 * Math.PI);
           let winnerIndex = Math.round(pointerPos / currentSectorAngle) % sectors;
-          // The center of the winning sector is:
           const desiredCenter = (winnerIndex + 0.5) * currentSectorAngle;
           const targetRotationMod = (2 * Math.PI + pointerAngle - desiredCenter) % (2 * Math.PI);
           const currentMod = rouletteCurrentAngle % (2 * Math.PI);
@@ -501,7 +515,7 @@
           }
           const finalTargetAngle = rouletteCurrentAngle + delta;
           
-          // Snap animation (1 second) to align the winning sector.
+          // Snap animation to align the winning sector.
           const snapDuration = 1000;
           const snapStartAngle = rouletteCurrentAngle;
           const snapStartTime = performance.now();
@@ -514,6 +528,8 @@
             if (progressSnap < 1) {
               requestAnimationFrame(animateSnap);
             } else {
+              // Persist the final angle so all browsers see the same UI state.
+              window.set(window.ref(window.db, "rouletteState/currentAngle"), rouletteCurrentAngle);
               alert("Winner: " + currentAttendees[winnerIndex]);
             }
           }
@@ -528,7 +544,7 @@
       spinRouletteWheel(5000);
     });
     
-    // Update the wheel periodically in case attendance changes.
+    // Optionally, update the wheel periodically in case attendance changes.
     setInterval(updateRouletteWheel, 2000);
   </script>
 </body>
