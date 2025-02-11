@@ -2,14 +2,13 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Lunch Lottery</title>
   <script type="module">
+    // Import Firebase modules
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.3.0/firebase-app.js";
-    // Import set so we can update specific keys
     import { getDatabase, ref, set, remove, push, onValue } from "https://www.gstatic.com/firebasejs/11.3.0/firebase-database.js";
 
-    // Firebase configuration using your actual keys.
+    // Firebase configuration (using your actual keys)
     const firebaseConfig = {
       apiKey: "AIzaSyAaihPMwzCZEYQV_pUaffWKqIqxubAlzkc",
       authDomain: "lunch-beda3.firebaseapp.com",
@@ -21,48 +20,48 @@
       databaseURL: "https://lunch-beda3-default-rtdb.firebaseio.com/"
     };
 
-    // Initialize Firebase
+    // Initialize Firebase and get the database reference.
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
 
-    /* ====================================
+    /* ==============================
        Office Attendance Functions
-       ==================================== */
+       ============================== */
 
-    // Updates the office attendance record based on the current name and radio selection.
+    // Called when the radio buttons change.
+    // Uses the currently selected name and adds (or removes) it from the office attendance node.
     function updateAttendance() {
       const nameSelect = document.getElementById("name");
       const name = nameSelect.value;
       const selectedRadio = document.querySelector('input[name="officeStatus"]:checked');
       if (!selectedRadio) {
-        // If no radio button is selected, do nothing.
+        // No option selected—do nothing.
         return;
       }
       const inOffice = selectedRadio.value;
       if (inOffice === "yes") {
-        // Add or update the person's attendance using their name as the key.
+        // Use the person's name as a key so that changes update the record.
         set(ref(db, "officeAttendance/" + name), name)
           .then(() => console.log("Attendance updated for:", name))
           .catch((error) => console.error("Error updating attendance:", error));
       } else if (inOffice === "no") {
-        // Remove the person from attendance.
         remove(ref(db, "officeAttendance/" + name))
           .then(() => console.log("Attendance removed for:", name))
           .catch((error) => console.error("Error removing attendance:", error));
       }
     }
 
-    // When the name dropdown changes, clear the radio button selection.
+    // Called when the name dropdown changes.
+    // Clears any radio button selection so that the new person’s attendance must be reselected.
     function nameChanged() {
-      // Clear all radio buttons.
       Array.from(document.getElementsByName("officeStatus")).forEach(radio => {
         radio.checked = false;
       });
-      // Optionally, call updateAttendance() (which will now see no radio selected).
+      // Call updateAttendance (which now will not find a radio selection).
       updateAttendance();
     }
 
-    // Realtime listener to update the "In Office" list.
+    // Listens to the "officeAttendance" node and updates the "In Office" list.
     function attachOfficeAttendanceListener() {
       const officeAttendanceRef = ref(db, "officeAttendance");
       onValue(officeAttendanceRef, (snapshot) => {
@@ -100,9 +99,9 @@
       document.getElementById("selectedPerson").textContent = "";
     }
 
-    /* ====================================
+    /* ==============================
        Restaurant Selector Functions
-       ==================================== */
+       ============================== */
 
     // Attaches a realtime listener to populate the restaurant dropdown.
     function attachRestaurantListener() {
@@ -110,10 +109,10 @@
       onValue(restaurantRef, (snapshot) => {
         const select = document.getElementById("restaurant");
         if (!select) return;
-        // Preserve the current selection, if any.
+        // Preserve current selection, if any.
         const currentValue = select.value;
         select.innerHTML = "";
-        if (snapshot.exists()){
+        if (snapshot.exists()) {
           snapshot.forEach((childSnapshot) => {
             const restaurant = childSnapshot.val();
             const option = document.createElement("option");
@@ -122,12 +121,12 @@
             select.appendChild(option);
           });
         }
-        // Always add the "Choose new restaurant" option.
+        // Always add the "Choose new restaurant" option at the end.
         const newOption = document.createElement("option");
         newOption.value = "Choose New";
         newOption.textContent = "Choose new restaurant";
         select.appendChild(newOption);
-
+        // Re-select the previous value if it still exists.
         if (currentValue && Array.from(select.options).some(opt => opt.value === currentValue)) {
           select.value = currentValue;
         }
@@ -135,7 +134,7 @@
     }
 
     // Handles changes in the restaurant dropdown.
-    // When "Choose New" is selected, displays an input field and Add button.
+    // When "Choose New" is selected, displays a text input and an Add button.
     function handleRestaurantSelection() {
       const select = document.getElementById("restaurant");
       const selectedRestaurantElem = document.getElementById("selectedRestaurant");
@@ -146,26 +145,26 @@
       }
       // Clear any existing input/button.
       newRestaurantContainer.innerHTML = "";
-
       if (select.value === "Choose New") {
-        // Create a text input for the new restaurant.
+        // Create a text input field for the new restaurant name.
         const newInput = document.createElement("input");
         newInput.type = "text";
         newInput.id = "newRestaurantInput";
         newInput.placeholder = "Enter new restaurant name";
-
         // Create an Add button.
         const addButton = document.createElement("button");
         addButton.id = "addRestaurantButton";
         addButton.textContent = "Add";
-
+        // When the button is clicked, push the new restaurant to Firebase.
         addButton.onclick = function() {
           const newRestaurant = newInput.value.trim();
           if (newRestaurant) {
             push(ref(db, "restaurants"), newRestaurant)
               .then(() => {
                 selectedRestaurantElem.textContent = newRestaurant;
+                // Clear the input/button container.
                 newRestaurantContainer.innerHTML = "";
+                // Update the dropdown's selected value (the realtime listener will update the options shortly).
                 select.value = newRestaurant;
               })
               .catch((error) => console.error("Error adding new restaurant:", error));
@@ -173,17 +172,17 @@
             alert("Please enter a restaurant name.");
           }
         };
-
-        // Append the input and button to the container.
+        // Append the input and button to the dedicated container.
         newRestaurantContainer.appendChild(newInput);
         newRestaurantContainer.appendChild(addButton);
         newInput.focus();
       } else {
+        // For any selection other than "Choose New", simply update the display.
         selectedRestaurantElem.textContent = select.value;
       }
     }
 
-    // When the DOM is fully loaded, attach the realtime listeners.
+    // Attach realtime listeners when the DOM is ready.
     document.addEventListener("DOMContentLoaded", () => {
       attachOfficeAttendanceListener();
       attachRestaurantListener();
@@ -203,7 +202,7 @@
   <!-- Office Attendance Section -->
   <h2>Will you be in the office today?</h2>
   <label for="name">Select your name:</label>
-  <!-- When the name changes, call nameChanged() to clear the radio buttons -->
+  <!-- When the name changes, clear the radio buttons -->
   <select id="name" onchange="nameChanged()">
     <option value="Alec">Alec</option>
     <option value="Chai">Chai</option>
@@ -213,7 +212,7 @@
     <option value="Pete">Pete</option>
   </select>
   <br>
-  <!-- Radio buttons now call updateAttendance() when changed -->
+  <!-- Radio buttons for office status; each calls updateAttendance() when changed -->
   <label>
     <input type="radio" name="officeStatus" value="yes" onchange="updateAttendance()"> Yes
   </label>
@@ -228,7 +227,7 @@
   <button onclick="pickRandomPerson()">Pick</button>
   <p id="selectedPerson"></p>
   
-  <!-- Clear Office Data Section (placed above the restaurant section) -->
+  <!-- Clear Office Data Section (placed above the restaurant selector) -->
   <h2>Clear Office Data</h2>
   <button onclick="clearOfficeData()">Clear Office Data</button>
   
@@ -236,7 +235,7 @@
   <h2>Restaurant Selector</h2>
   <select id="restaurant" onchange="handleRestaurantSelection()"></select>
   <p id="selectedRestaurant"></p>
-  <!-- Container for the new restaurant input field and Add button -->
+  <!-- Container where the new restaurant input and Add button will appear -->
   <div id="newRestaurantContainer"></div>
 </body>
 </html>
