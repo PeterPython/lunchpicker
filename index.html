@@ -4,17 +4,16 @@
   <meta charset="UTF-8" />
   <title>Lunch!</title>
   <style>
-    /* Ensure h2 headings and the selected person text are 2em */
-    h2, #selectedPerson {
-      font-size: 2em;
-    }
-    /* General page styling */
+    /* General styling */
     body {
       font-family: Arial, sans-serif;
       text-align: center;
       background: #fafafa;
       margin: 0;
-      padding: 0;
+      padding: 20px;
+    }
+    h2, #selectedPerson {
+      font-size: 2em;
     }
     /* Table styling */
     table {
@@ -27,31 +26,38 @@
     th, td {
       padding: 10px;
     }
-    /* Roulette wheel styling */
-    #rouletteWheel {
-      display: block;
+    /* Roulette container styling */
+    #rouletteContainer {
+      position: relative;
+      display: inline-block;
       margin: 20px auto;
+    }
+    #rouletteWheel {
       border: 5px solid #333;
       border-radius: 50%;
+      display: block;
     }
+    /* Pointer styling (placed absolutely over the canvas) */
     #pointer {
+      position: absolute;
+      top: -30px; /* adjust this value as needed */
+      left: 50%;
+      transform: translateX(-50%);
       width: 0;
       height: 0;
-      margin: 0 auto;
       border-left: 20px solid transparent;
       border-right: 20px solid transparent;
       border-bottom: 30px solid #333;
-      position: relative;
-      top: 20px;
     }
   </style>
+  
   <!-- Firebase & Main App Script (as a module) -->
   <script type="module">
     // Import Firebase modules
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.3.0/firebase-app.js";
     import { getDatabase, ref, set, remove, push, onValue } from "https://www.gstatic.com/firebasejs/11.3.0/firebase-database.js";
 
-    // Firebase configuration (use your actual keys)
+    // Firebase configuration (replace with your actual keys)
     const firebaseConfig = {
       apiKey: "AIzaSyAaihPMwzCZEYQV_pUaffWKqIqxubAlzkc",
       authDomain: "lunch-beda3.firebaseapp.com",
@@ -70,10 +76,9 @@
     // Global flag to ensure auto-selection happens only once.
     let autoSelectionMade = false;
 
-    // Use the same persons array for attendance and other parts.
-    // (This remains available if you need the full list.)
+    // Full list of names (if needed elsewhere)
     const persons = ["Alec", "Chai", "Cole", "Denis", "Hunter", "Pete"];
-    window.persons = persons; // Expose globally if needed.
+    window.persons = persons; // exposed globally
 
     /* ====================================
        Clock & Auto-Selection Functionality
@@ -89,7 +94,7 @@
       const hourPart = parts[0].replace(/\D/g, '');
       const hour = parseInt(hourPart, 10);
       
-      // Auto-select a random person at 10am or later if none has been chosen yet.
+      // Auto-select a random person at 10am or later if no one is selected.
       if (hour >= 10 && !autoSelectionMade) {
         const selectedPersonElem = document.getElementById("selectedPerson");
         if (!selectedPersonElem.innerText ||
@@ -102,7 +107,7 @@
       }
     }
 
-    // Attach a listener for the persistent lunch selection.
+    // Listener for persistent lunch selection.
     function attachLunchSelectionListener() {
       const lunchSelectionRef = ref(db, "lunchSelection/selectedPerson");
       onValue(lunchSelectionRef, (snapshot) => {
@@ -137,15 +142,11 @@
       }
       if (selected === "yes") {
         set(ref(db, "officeAttendance/" + name), name)
-          .then(() => {
-            updateCellBackground(name, "yes");
-          })
+          .then(() => updateCellBackground(name, "yes"))
           .catch(error => console.error("Error updating attendance for " + name + ":", error));
       } else if (selected === "no") {
         remove(ref(db, "officeAttendance/" + name))
-          .then(() => {
-            updateCellBackground(name, "no");
-          })
+          .then(() => updateCellBackground(name, "no"))
           .catch(error => console.error("Error removing attendance for " + name + ":", error));
       }
     }
@@ -169,7 +170,7 @@
       });
     }
 
-    // This function picks a random person from those with attendance marked "yes"
+    // Picks a random person from those marked "yes" and persists the selection.
     function pickRandomPerson() {
       const rows = document.querySelectorAll("#attendanceTable tbody tr");
       const inOfficeNames = [];
@@ -379,13 +380,15 @@
       </tr>
     </tbody>
   </table>
-  <!-- The random pick button has been removed -->
+  <!-- The "Pick Random Person" button has been removed -->
   <div id="selectedPerson"><b>???</b></div>
   
   <!-- Roulette Wheel Section -->
   <h2>Roulette Wheel</h2>
-  <div id="pointer"></div>
-  <canvas id="rouletteWheel" width="400" height="400"></canvas>
+  <div id="rouletteContainer">
+    <div id="pointer"></div>
+    <canvas id="rouletteWheel" width="400" height="400"></canvas>
+  </div>
   
   <!-- Lunch Options (Restaurant Dropdown) -->
   <h2>Lunch Options</h2>
@@ -394,7 +397,7 @@
   
   <!-- Roulette Wheel Script (Non-module) -->
   <script>
-    // This function returns the names of attendees who have clicked "Yes"
+    // Returns an array of names from the attendance table for those who clicked "Yes"
     function getAttendingNames() {
       const rows = document.querySelectorAll("#attendanceTable tbody tr");
       const names = [];
@@ -415,10 +418,10 @@
     const rouletteRadius = Math.min(rouletteCenterX, rouletteCenterY) - 20;
     
     let rouletteCurrentAngle = 0;
-    let currentAttendees = []; // Will store the list of names for the current spin.
+    let currentAttendees = []; // Names used in the current spin.
     let currentSectorAngle = 0;
     
-    // Draws the roulette wheel using the provided list of names.
+    // Draws the roulette wheel using a unique color for each sector.
     function drawRouletteWheel(attendees) {
       rouletteCtx.clearRect(0, 0, rouletteCanvas.width, rouletteCanvas.height);
       if (attendees.length === 0) {
@@ -431,7 +434,7 @@
       const sectorAngle = 2 * Math.PI / sectors;
       
       for (let i = 0; i < sectors; i++) {
-        // Calculate a unique hue for each sector so that adjacent sectors differ
+        // Each sector gets its own hue.
         const hue = i * (360 / sectors);
         rouletteCtx.fillStyle = `hsl(${hue}, 80%, 50%)`;
         
@@ -443,7 +446,7 @@
         rouletteCtx.closePath();
         rouletteCtx.fill();
         
-        // Draw the person's name within the sector.
+        // Draw the person's name in the sector.
         rouletteCtx.save();
         rouletteCtx.translate(rouletteCenterX, rouletteCenterY);
         rouletteCtx.rotate(startAngle + sectorAngle / 2);
@@ -455,7 +458,7 @@
       }
     }
     
-    // Redraw the wheel using the current attendance list.
+    // Redraws the wheel based on the current attendance.
     function updateRouletteWheel() {
       const attendees = getAttendingNames();
       drawRouletteWheel(attendees);
@@ -464,7 +467,7 @@
     // Initially draw the wheel.
     updateRouletteWheel();
     
-    // Spins the roulette wheel using only the names of those who clicked "Yes".
+    // Spins the wheel and then snaps it so that a sector's center is exactly aligned with the pointer.
     function spinRouletteWheel(duration = 5000) {
       const attendees = getAttendingNames();
       if (attendees.length === 0) {
@@ -477,8 +480,9 @@
       
       const startTime = performance.now();
       const initialAngle = rouletteCurrentAngle;
-      const totalSpins = 10; // Total full rotations
+      const totalSpins = 10; // total full rotations
       
+      // Main spin animation.
       function animateRoulette(now) {
         const elapsed = now - startTime;
         const progress = Math.min(elapsed / duration, 1);
@@ -488,24 +492,57 @@
         if (progress < 1) {
           requestAnimationFrame(animateRoulette);
         } else {
-          // Determine the winning sector.
+          // Now determine which sector's center is closest to the pointer.
+          // We assume the pointer arrow corresponds to an angle of -π/2 (i.e. the top of the circle).
+          const pointerAngle = -Math.PI / 2;
           const normalizedAngle = rouletteCurrentAngle % (2 * Math.PI);
-          // Adjust for the pointer at the top (π/2).
-          const pointerAngle = (2 * Math.PI + Math.PI/2 - normalizedAngle) % (2 * Math.PI);
-          const winnerIndex = Math.floor(pointerAngle / currentSectorAngle);
-          const winner = currentAttendees[winnerIndex];
-          alert("Winner: " + winner);
+          // Compute the pointer's position relative to the wheel's rotation.
+          let pointerPos = (2 * Math.PI + pointerAngle - normalizedAngle) % (2 * Math.PI);
+          // The winning sector index is the one whose center is nearest to the pointer.
+          let winnerIndex = Math.round(pointerPos / currentSectorAngle) % sectors;
+          // The center of the winning sector (relative to the wheel's rotation) is:
+          const desiredCenter = (winnerIndex + 0.5) * currentSectorAngle;
+          // We want to adjust rouletteCurrentAngle so that:
+          // (2π + pointerAngle - (rouletteCurrentAngle mod 2π)) = desiredCenter.
+          const targetRotationMod = (2 * Math.PI + pointerAngle - desiredCenter) % (2 * Math.PI);
+          const currentMod = rouletteCurrentAngle % (2 * Math.PI);
+          let delta = targetRotationMod - currentMod;
+          // Adjust delta to take the shortest path.
+          if (delta > Math.PI) {
+            delta -= 2 * Math.PI;
+          } else if (delta < -Math.PI) {
+            delta += 2 * Math.PI;
+          }
+          const finalTargetAngle = rouletteCurrentAngle + delta;
+          
+          // Snap animation (e.g., 1 second) to align the winning sector.
+          const snapDuration = 1000;
+          const snapStartAngle = rouletteCurrentAngle;
+          const snapStartTime = performance.now();
+          function animateSnap(nowSnap) {
+            const elapsedSnap = nowSnap - snapStartTime;
+            const progressSnap = Math.min(elapsedSnap / snapDuration, 1);
+            const easedSnap = 1 - Math.pow(1 - progressSnap, 3);
+            rouletteCurrentAngle = snapStartAngle + (finalTargetAngle - snapStartAngle) * easedSnap;
+            drawRouletteWheel(currentAttendees);
+            if (progressSnap < 1) {
+              requestAnimationFrame(animateSnap);
+            } else {
+              alert("Winner: " + currentAttendees[winnerIndex]);
+            }
+          }
+          requestAnimationFrame(animateSnap);
         }
       }
       requestAnimationFrame(animateRoulette);
     }
     
-    // Start a spin when the roulette canvas is clicked.
+    // Spin the wheel when the canvas is clicked.
     rouletteCanvas.addEventListener("click", function() {
       spinRouletteWheel(5000);
     });
     
-    // Optionally, update the roulette wheel periodically (in case attendance changes).
+    // Update the wheel periodically in case attendance changes.
     setInterval(updateRouletteWheel, 2000);
   </script>
 </body>
