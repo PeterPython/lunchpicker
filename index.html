@@ -3,6 +3,12 @@
 <head>
   <meta charset="UTF-8" />
   <title>Lunch!</title>
+  <style>
+    /* Ensure that all h2 headings and the selected person text are the same size */
+    h2, #selectedPerson {
+      font-size: 2em;
+    }
+  </style>
   <script type="module">
     // Import Firebase modules
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.3.0/firebase-app.js";
@@ -34,6 +40,7 @@
       const clockElement = document.getElementById("clock");
       const options = { timeZone: 'America/New_York', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true };
       const timeString = new Intl.DateTimeFormat('en-US', options).format(new Date());
+      // Display time with "Time:" prefix.
       clockElement.textContent = "Time: " + timeString;
       
       const parts = timeString.split(':');
@@ -43,7 +50,6 @@
       // If it's 10am or later and no one is selected, auto-pick a random person.
       if (hour >= 10 && !autoSelectionMade) {
         const selectedPersonElem = document.getElementById("selectedPerson");
-        // Check if the displayed text is empty or already shows the fallback.
         if (!selectedPersonElem.innerText ||
             selectedPersonElem.innerText.trim() === "" ||
             selectedPersonElem.innerText.includes("???")) {
@@ -60,7 +66,7 @@
       onValue(lunchSelectionRef, (snapshot) => {
         const selected = snapshot.val();
         const selectedPersonElem = document.getElementById("selectedPerson");
-        // If selected is a non-empty value and is not exactly "???", append an exclamation point.
+        // If a name is stored and it's not the fallback, display it with an exclamation point.
         if (selected && selected !== "???") {
           selectedPersonElem.innerHTML = `<b>${selected}!</b>`;
         } else {
@@ -87,6 +93,7 @@
       }
     }
 
+    // Called when a radio button for a specific person is changed.
     function updateAttendanceFor(name) {
       const radios = document.getElementsByName("officeStatus_" + name);
       let selected = "";
@@ -113,6 +120,7 @@
       }
     }
 
+    // Realtime listener to update the attendance table based on Firebase data.
     function attachOfficeAttendanceListener() {
       const officeAttendanceRef = ref(db, "officeAttendance");
       onValue(officeAttendanceRef, (snapshot) => {
