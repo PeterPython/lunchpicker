@@ -24,8 +24,34 @@
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
 
+    // Global flag for auto-selection (if needed in clock logic)
+    let autoSelectionMade = false;
+
     /* ====================================
-       Helper Function for Updating Cell Background
+       Clock & Auto-Selection Functionality
+       ==================================== */
+    function updateClock() {
+      const clockElement = document.getElementById("clock");
+      const options = { timeZone: 'America/New_York', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
+      const timeString = new Intl.DateTimeFormat('en-US', options).format(new Date());
+      clockElement.textContent = "ET Time: " + timeString;
+
+      const parts = timeString.split(':');
+      const hour = parseInt(parts[0], 10);
+      if (hour >= 10 && !autoSelectionMade) {
+        const selectedPersonElem = document.getElementById("selectedPerson");
+        if (!selectedPersonElem.textContent ||
+            selectedPersonElem.textContent.trim() === "" ||
+            selectedPersonElem.textContent.includes("No one")) {
+          console.log("Auto selecting random person because it's 10am ET or later and no one is selected.");
+          pickRandomPerson();
+          autoSelectionMade = true;
+        }
+      }
+    }
+
+    /* ====================================
+       Office Attendance Table Functions
        ==================================== */
     function updateCellBackground(name, selected) {
       const cell = document.getElementById("nameCell_" + name);
@@ -42,11 +68,6 @@
       }
     }
 
-    /* ====================================
-       Office Attendance Table Functions
-       ==================================== */
-
-    // Called when a radio button for a specific person is changed.
     function updateAttendanceFor(name) {
       const radios = document.getElementsByName("officeStatus_" + name);
       let selected = "";
@@ -56,7 +77,6 @@
           break;
         }
       }
-      // Update Firebase and update cell background via helper function.
       if (selected === "yes") {
         set(ref(db, "officeAttendance/" + name), name)
           .then(() => {
@@ -74,7 +94,6 @@
       }
     }
 
-    // Attaches a realtime listener to update the table based on Firebase attendance data.
     function attachOfficeAttendanceListener() {
       const officeAttendanceRef = ref(db, "officeAttendance");
       onValue(officeAttendanceRef, (snapshot) => {
@@ -95,15 +114,37 @@
       });
     }
 
-    /* ====================================
-       (Other functions remain unchanged)
-       ==================================== */
+    function pickRandomPerson() {
+      const rows = document.querySelectorAll("#attendanceTable tbody tr");
+      const inOfficeNames = [];
+      rows.forEach(row => {
+        const name = row.cells[0].textContent;
+        const yesRadio = row.querySelector(`input[name="officeStatus_${name}"][value="yes"]`);
+        if (yesRadio && yesRadio.checked) {
+          inOfficeNames.push(name);
+        }
+      });
+      const selectedPersonElem = document.getElementById("selectedPerson");
+      if (inOfficeNames.length > 0) {
+        const randomIndex = Math.floor(Math.random() * inOfficeNames.length);
+        const selected = inOfficeNames[randomIndex];
+        selectedPersonElem.textContent = selected;
+        console.log("Random person selected:", selected);
+      } else {
+        selectedPersonElem.textContent = "No one is in the office.";
+      }
+    }
 
-    // For brevity, the Restaurant Selector functions, clock/auto-selection functions,
-    // and other parts of the code remain the same as in the previous version.
-    // (They are not directly related to the background color issue.)
-    
-    // --- Restaurant Selector Functions (omitted here for brevity) ---
+    function clearOfficeData() {
+      remove(ref(db, "officeAttendance"))
+        .then(() => console.log("Office attendance cleared"))
+        .catch((error) => console.error("Error clearing office attendance:", error));
+      document.getElementById("selectedPerson").textContent = "";
+    }
+
+    /* ====================================
+       Restaurant Selector Functions
+       ==================================== */
     function attachRestaurantListener() {
       const restaurantRef = ref(db, "restaurants");
       onValue(restaurantRef, (snapshot) => {
@@ -198,13 +239,14 @@
       console.log("Random restaurant picked:", randomRestaurant);
     }
 
-    // Clock and Auto-selection functionality, etc.
-    // (Omitted here for brevity; assume it is the same as the previous version.)
+    function startClock() {
+      setInterval(updateClock, 1000);
+    }
 
     document.addEventListener("DOMContentLoaded", () => {
       attachOfficeAttendanceListener();
       attachRestaurantListener();
-      // Other initialization code…
+      startClock();
     });
 
     // Expose functions for inline event handling.
@@ -213,12 +255,17 @@
     window.attachRestaurantListener = attachRestaurantListener;
     window.handleRestaurantSelection = handleRestaurantSelection;
     window.pickRandomRestaurant = pickRandomRestaurant;
+    window.pickRandomPerson = pickRandomPerson;
+    window.clearOfficeData = clearOfficeData;
   </script>
 </head>
 <body>
   <h1>Lunch!</h1>
   
-  <!-- (Other sections remain the same as before; for brevity, only the attendance table is shown here.) -->
+  <!-- Clock Display -->
+  <div id="clock" style="font-weight: bold; margin-bottom: 10px;"></div>
+  
+  <!-- Office Attendance Table (heading removed) -->
   <table id="attendanceTable" border="1" cellpadding="5">
     <thead>
       <tr>
@@ -296,7 +343,19 @@
     </tbody>
   </table>
   
-  <!-- (Other sections such as the clock, restaurant selector, etc., remain unchanged.) -->
+  <!-- "Restaurant selector" section (for picking a random person from those in office) -->
+  <h2>Restaurant selector</h2>
+  <button onclick="pickRandomPerson()">Choose a person</button>
+  <p id="selectedPerson"></p>
   
+  <!-- RESET button for clearing office attendance data -->
+  <button onclick="clearOfficeData()">RESET</button>
+  
+  <!-- Restaurant Section -->
+  <h2>Pick a restaurant</h2>
+  <select id="restaurant" onchange="handleRestaurantSelection()"></select>
+  <p id="selectedRestaurant"></p>
+  <div id="newRestaurantContainer"></div>
+  <button onclick="pickRandomRestaurant()">Pick random restaurant</button>
 </body>
 </html>
