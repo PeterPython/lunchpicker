@@ -34,7 +34,7 @@
       const clockElement = document.getElementById("clock");
       const options = { timeZone: 'America/New_York', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
       const timeString = new Intl.DateTimeFormat('en-US', options).format(new Date());
-      // Display without "ET" prefix; just "Time:"
+      // Display without "ET"; just "Time:"
       clockElement.textContent = "Time: " + timeString;
       
       const parts = timeString.split(':');
@@ -367,8 +367,8 @@
   <!-- Add white space after the table -->
   <div style="height: 20px;"></div>
   
-  <!-- Section for picking a random person from those marked "Yes" -->
-  <button onclick="pickRandomPerson()">Choose a person</button>
+  <!-- Section for picking a random person (persistent selection) -->
+  <button onclick="pickRandomPerson()">Who gets to pick?</button>
   <p id="selectedPerson"></p>
   
   <!-- RESET button for clearing office attendance data -->
@@ -377,9 +377,8 @@
   <!-- Restaurant Section -->
   <h2>Pick a restaurant</h2>
   <select id="restaurant" onchange="handleRestaurantSelection()"></select>
-  <!-- Removed the redundant text element for restaurant selection -->
+  <!-- The redundant text element for restaurant selection has been removed -->
   <div id="newRestaurantContainer"></div>
-  <!-- The "Pick random restaurant" button has been removed -->
-  
+  <!-- Note: The separate "Pick random restaurant" button has been removed -->
 </body>
 </html>
