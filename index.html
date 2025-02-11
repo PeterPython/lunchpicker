@@ -25,70 +25,57 @@
     const db = getDatabase(app);
 
     /* ====================================
-       Office Attendance Functions
+       Office Attendance Table Functions
        ==================================== */
 
-    function updateAttendance() {
-      const nameSelect = document.getElementById("name");
-      const name = nameSelect.value;
-      const selectedRadio = document.querySelector('input[name="officeStatus"]:checked');
-      if (!selectedRadio) {
-        return;
+    // Called when a radio button for a person is changed.
+    // It checks which option (yes/no) is selected, updates Firebase accordingly,
+    // and turns the corresponding name cell green if "yes" is selected.
+    function updateAttendanceFor(name) {
+      const radios = document.getElementsByName("officeStatus_" + name);
+      let selected = "";
+      for (let i = 0; i < radios.length; i++) {
+        if (radios[i].checked) {
+          selected = radios[i].value;
+          break;
+        }
       }
-      const inOffice = selectedRadio.value;
-      if (inOffice === "yes") {
+      const cell = document.getElementById("nameCell_" + name);
+      if (selected === "yes") {
         set(ref(db, "officeAttendance/" + name), name)
-          .then(() => console.log("Attendance updated for:", name))
-          .catch((error) => console.error("Error updating attendance:", error));
-      } else if (inOffice === "no") {
+          .then(() => console.log("Attendance updated for " + name))
+          .catch(error => console.error("Error updating attendance for " + name + ":", error));
+        if (cell) cell.style.backgroundColor = "green";
+      } else if (selected === "no") {
         remove(ref(db, "officeAttendance/" + name))
-          .then(() => console.log("Attendance removed for:", name))
-          .catch((error) => console.error("Error removing attendance:", error));
+          .then(() => console.log("Attendance removed for " + name))
+          .catch(error => console.error("Error removing attendance for " + name + ":", error));
+        if (cell) cell.style.backgroundColor = "";
       }
     }
 
-    function nameChanged() {
-      // Clear radio selections when the name changes.
-      Array.from(document.getElementsByName("officeStatus")).forEach(radio => {
-        radio.checked = false;
-      });
-      console.log("Name changed; radio buttons cleared.");
-      updateAttendance();
-    }
-
+    // Attaches a realtime listener to update the table based on Firebase data.
+    // For each fixed name, if an attendance entry exists, it checks the "Yes" radio
+    // and turns the name cell green; otherwise, it clears any selection.
     function attachOfficeAttendanceListener() {
       const officeAttendanceRef = ref(db, "officeAttendance");
       onValue(officeAttendanceRef, (snapshot) => {
-        const list = document.getElementById("officeList");
-        if (!list) return;
-        list.innerHTML = "";
-        if (snapshot.exists()) {
-          snapshot.forEach((childSnapshot) => {
-            const attendee = childSnapshot.val();
-            const li = document.createElement("li");
-            li.textContent = attendee;
-            list.appendChild(li);
-          });
-        }
+        const names = ["Alec", "Chai", "Cole", "Denis", "Hunter", "Pete"];
+        names.forEach(name => {
+          const yesRadio = document.querySelector(`input[name="officeStatus_${name}"][value="yes"]`);
+          const noRadio = document.querySelector(`input[name="officeStatus_${name}"][value="no"]`);
+          const cell = document.getElementById("nameCell_" + name);
+          if (snapshot.hasChild(name)) {
+            if (yesRadio) { yesRadio.checked = true; }
+            if (noRadio) { noRadio.checked = false; }
+            if (cell) { cell.style.backgroundColor = "green"; }
+          } else {
+            if (yesRadio) { yesRadio.checked = false; }
+            if (noRadio) { noRadio.checked = false; }
+            if (cell) { cell.style.backgroundColor = ""; }
+          }
+        });
       });
-    }
-
-    function pickRandomPerson() {
-      const listItems = document.querySelectorAll("#officeList li");
-      const selectedPersonElem = document.getElementById("selectedPerson");
-      if (listItems.length > 0) {
-        const randomIndex = Math.floor(Math.random() * listItems.length);
-        selectedPersonElem.textContent = `Selected: ${listItems[randomIndex].textContent}`;
-      } else {
-        selectedPersonElem.textContent = "No one is in the office.";
-      }
-    }
-
-    function clearOfficeData() {
-      remove(ref(db, "officeAttendance"))
-        .then(() => console.log("Office attendance cleared"))
-        .catch((error) => console.error("Error clearing office attendance:", error));
-      document.getElementById("selectedPerson").textContent = "";
     }
 
     /* ====================================
@@ -116,7 +103,6 @@
         newOption.value = "Choose New";
         newOption.textContent = "Choose new restaurant";
         select.appendChild(newOption);
-
         if (!currentValue || !Array.from(select.options).some(opt => opt.value === currentValue)) {
           select.value = "Choose New";
         } else {
@@ -173,11 +159,10 @@
       }
     }
 
-    // NEW FUNCTION: Picks a random restaurant from the dropdown (ignoring "Choose New")
     function pickRandomRestaurant() {
       const select = document.getElementById("restaurant");
       if (!select) return;
-      // Build an array of valid restaurant options (exclude the "Choose New" option)
+      // Get all valid restaurant options (excluding "Choose New")
       const validOptions = Array.from(select.options).filter(opt => opt.value !== "Choose New");
       if (validOptions.length === 0) {
         alert("No restaurants available to pick.");
@@ -196,10 +181,10 @@
       attachRestaurantListener();
     });
 
-    window.updateAttendance = updateAttendance;
-    window.nameChanged = nameChanged;
-    window.pickRandomPerson = pickRandomPerson;
-    window.clearOfficeData = clearOfficeData;
+    // Expose functions for inline event handling.
+    window.updateAttendanceFor = updateAttendanceFor;
+    window.attachOfficeAttendanceListener = attachOfficeAttendanceListener;
+    window.attachRestaurantListener = attachRestaurantListener;
     window.handleRestaurantSelection = handleRestaurantSelection;
     window.pickRandomRestaurant = pickRandomRestaurant;
   </script>
@@ -207,42 +192,90 @@
 <body>
   <h1>Lunch!</h1>
   
-  <!-- Office Attendance Section -->
-  <h2>Will you be in the office today?</h2>
-  <label for="name">Select your name:</label>
-  <select id="name" onchange="nameChanged()">
-    <option value="Alec">Alec</option>
-    <option value="Chai">Chai</option>
-    <option value="Cole">Cole</option>
-    <option value="Denis">Denis</option>
-    <option value="Hunter">Hunter</option>
-    <option value="Pete">Pete</option>
-  </select>
-  <br>
-  <label>
-    <input type="radio" name="officeStatus" value="yes" onchange="updateAttendance()"> Yes
-  </label>
-  <label>
-    <input type="radio" name="officeStatus" value="no" onchange="updateAttendance()"> No
-  </label>
-  
-  <h2>In office today</h2>
-  <ul id="officeList"></ul>
-  
-  <!-- Restaurant selector section -->
-  <h2>Restaurant selector</h2>
-  <button onclick="pickRandomPerson()">Restaurant selector</button>
-  <p id="selectedPerson"></p>
-  
-  <!-- RESET button -->
-  <button onclick="clearOfficeData()">RESET</button>
+  <!-- Office Attendance Table Section -->
+  <h2>Office Attendance</h2>
+  <table id="attendanceTable" border="1" cellpadding="5">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>In office?</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td id="nameCell_Alec">Alec</td>
+        <td>
+          <label>
+            <input type="radio" name="officeStatus_Alec" value="yes" onchange="updateAttendanceFor('Alec')"> Yes
+          </label>
+          <label>
+            <input type="radio" name="officeStatus_Alec" value="no" onchange="updateAttendanceFor('Alec')"> No
+          </label>
+        </td>
+      </tr>
+      <tr>
+        <td id="nameCell_Chai">Chai</td>
+        <td>
+          <label>
+            <input type="radio" name="officeStatus_Chai" value="yes" onchange="updateAttendanceFor('Chai')"> Yes
+          </label>
+          <label>
+            <input type="radio" name="officeStatus_Chai" value="no" onchange="updateAttendanceFor('Chai')"> No
+          </label>
+        </td>
+      </tr>
+      <tr>
+        <td id="nameCell_Cole">Cole</td>
+        <td>
+          <label>
+            <input type="radio" name="officeStatus_Cole" value="yes" onchange="updateAttendanceFor('Cole')"> Yes
+          </label>
+          <label>
+            <input type="radio" name="officeStatus_Cole" value="no" onchange="updateAttendanceFor('Cole')"> No
+          </label>
+        </td>
+      </tr>
+      <tr>
+        <td id="nameCell_Denis">Denis</td>
+        <td>
+          <label>
+            <input type="radio" name="officeStatus_Denis" value="yes" onchange="updateAttendanceFor('Denis')"> Yes
+          </label>
+          <label>
+            <input type="radio" name="officeStatus_Denis" value="no" onchange="updateAttendanceFor('Denis')"> No
+          </label>
+        </td>
+      </tr>
+      <tr>
+        <td id="nameCell_Hunter">Hunter</td>
+        <td>
+          <label>
+            <input type="radio" name="officeStatus_Hunter" value="yes" onchange="updateAttendanceFor('Hunter')"> Yes
+          </label>
+          <label>
+            <input type="radio" name="officeStatus_Hunter" value="no" onchange="updateAttendanceFor('Hunter')"> No
+          </label>
+        </td>
+      </tr>
+      <tr>
+        <td id="nameCell_Pete">Pete</td>
+        <td>
+          <label>
+            <input type="radio" name="officeStatus_Pete" value="yes" onchange="updateAttendanceFor('Pete')"> Yes
+          </label>
+          <label>
+            <input type="radio" name="officeStatus_Pete" value="no" onchange="updateAttendanceFor('Pete')"> No
+          </label>
+        </td>
+      </tr>
+    </tbody>
+  </table>
   
   <!-- Restaurants Section -->
   <h2>Restaurants</h2>
   <select id="restaurant" onchange="handleRestaurantSelection()"></select>
   <p id="selectedRestaurant"></p>
   <div id="newRestaurantContainer"></div>
-  <!-- New "Pick random restaurant" button -->
   <button onclick="pickRandomRestaurant()">Pick random restaurant</button>
 </body>
 </html>
