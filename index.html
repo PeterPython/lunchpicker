@@ -379,7 +379,7 @@
       </tr>
     </tbody>
   </table>
-  <button onclick="pickRandomPerson()">Pick Random Person for Lunch</button>
+  <!-- The random pick button has been removed -->
   <div id="selectedPerson"><b>???</b></div>
   
   <!-- Roulette Wheel Section -->
@@ -431,9 +431,12 @@
       const sectorAngle = 2 * Math.PI / sectors;
       
       for (let i = 0; i < sectors; i++) {
+        // Calculate a unique hue for each sector so that adjacent sectors differ
+        const hue = i * (360 / sectors);
+        rouletteCtx.fillStyle = `hsl(${hue}, 80%, 50%)`;
+        
         const startAngle = rouletteCurrentAngle + i * sectorAngle;
         const endAngle = startAngle + sectorAngle;
-        rouletteCtx.fillStyle = i % 2 === 0 ? "#ffdd57" : "#ff6f69";
         rouletteCtx.beginPath();
         rouletteCtx.moveTo(rouletteCenterX, rouletteCenterY);
         rouletteCtx.arc(rouletteCenterX, rouletteCenterY, rouletteRadius, startAngle, endAngle);
