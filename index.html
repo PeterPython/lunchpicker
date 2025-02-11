@@ -24,7 +24,7 @@
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
 
-    // Global flag for auto-selection (if needed in clock logic)
+    // Global flag to ensure auto-selection happens only once.
     let autoSelectionMade = false;
 
     /* ====================================
@@ -35,9 +35,10 @@
       const options = { timeZone: 'America/New_York', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
       const timeString = new Intl.DateTimeFormat('en-US', options).format(new Date());
       clockElement.textContent = "ET Time: " + timeString;
-
+      
       const parts = timeString.split(':');
       const hour = parseInt(parts[0], 10);
+      // If it's 10am ET or later and no one is selected, auto-pick a random person.
       if (hour >= 10 && !autoSelectionMade) {
         const selectedPersonElem = document.getElementById("selectedPerson");
         if (!selectedPersonElem.textContent ||
@@ -48,6 +49,20 @@
           autoSelectionMade = true;
         }
       }
+    }
+
+    // Attach a listener for the persistent lunch selection.
+    function attachLunchSelectionListener() {
+      const lunchSelectionRef = ref(db, "lunchSelection/selectedPerson");
+      onValue(lunchSelectionRef, (snapshot) => {
+        const selected = snapshot.val();
+        const selectedPersonElem = document.getElementById("selectedPerson");
+        if (selected) {
+          selectedPersonElem.textContent = selected;
+        } else {
+          selectedPersonElem.textContent = "No one is in the office.";
+        }
+      });
     }
 
     /* ====================================
@@ -68,6 +83,7 @@
       }
     }
 
+    // Called when a radio button for a specific person is changed.
     function updateAttendanceFor(name) {
       const radios = document.getElementsByName("officeStatus_" + name);
       let selected = "";
@@ -94,6 +110,7 @@
       }
     }
 
+    // Realtime listener to update the attendance table based on Firebase data.
     function attachOfficeAttendanceListener() {
       const officeAttendanceRef = ref(db, "officeAttendance");
       onValue(officeAttendanceRef, (snapshot) => {
@@ -114,6 +131,8 @@
       });
     }
 
+    // Picks a random person from those marked "Yes" in the attendance table
+    // and persists that selection in Firebase.
     function pickRandomPerson() {
       const rows = document.querySelectorAll("#attendanceTable tbody tr");
       const inOfficeNames = [];
@@ -124,22 +143,23 @@
           inOfficeNames.push(name);
         }
       });
-      const selectedPersonElem = document.getElementById("selectedPerson");
       if (inOfficeNames.length > 0) {
         const randomIndex = Math.floor(Math.random() * inOfficeNames.length);
         const selected = inOfficeNames[randomIndex];
-        selectedPersonElem.textContent = selected;
-        console.log("Random person selected:", selected);
+        // Persist the selection to Firebase so that it remains persistent.
+        set(ref(db, "lunchSelection/selectedPerson"), selected)
+          .then(() => console.log("Random person selected and persisted:", selected))
+          .catch(error => console.error("Error persisting selection:", error));
       } else {
-        selectedPersonElem.textContent = "No one is in the office.";
+        set(ref(db, "lunchSelection/selectedPerson"), "No one is in the office.");
       }
     }
 
     function clearOfficeData() {
       remove(ref(db, "officeAttendance"))
         .then(() => console.log("Office attendance cleared"))
-        .catch((error) => console.error("Error clearing office attendance:", error));
-      document.getElementById("selectedPerson").textContent = "";
+        .catch(error => console.error("Error clearing office attendance:", error));
+      // Note: We do not clear the persistent lunch selection so that it remains.
     }
 
     /* ====================================
@@ -209,7 +229,7 @@
                 newRestaurantContainer.innerHTML = "";
                 select.value = newRestaurant;
               })
-              .catch((error) => console.error("Error adding new restaurant:", error));
+              .catch(error => console.error("Error adding new restaurant:", error));
           } else {
             alert("Please enter a restaurant name.");
           }
@@ -246,6 +266,7 @@
     document.addEventListener("DOMContentLoaded", () => {
       attachOfficeAttendanceListener();
       attachRestaurantListener();
+      attachLunchSelectionListener();
       startClock();
     });
 
@@ -343,7 +364,7 @@
     </tbody>
   </table>
   
-  <!-- "Restaurant selector" section (for picking a random person from those in office) -->
+  <!-- "Restaurant selector" section for picking a random person from those in office -->
   <h2>Restaurant selector</h2>
   <button onclick="pickRandomPerson()">Choose a person</button>
   <p id="selectedPerson"></p>
