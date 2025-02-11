@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <title>Lunch!</title>
   <style>
-    /* Ensure h2 headings and the selected person text are 2em */
+    /* Ensuring h2 headings and the selected person text are 2em */
     h2, #selectedPerson {
       font-size: 2em;
     }
@@ -38,7 +38,6 @@
        ==================================== */
     function updateClock() {
       const clockElement = document.getElementById("clock");
-      // Use hour12: true for AM/PM format.
       const options = { timeZone: 'America/New_York', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true };
       const timeString = new Intl.DateTimeFormat('en-US', options).format(new Date());
       clockElement.textContent = "Time: " + timeString;
@@ -66,11 +65,10 @@
       onValue(lunchSelectionRef, (snapshot) => {
         const selected = snapshot.val();
         const selectedPersonElem = document.getElementById("selectedPerson");
-        // If a name is stored (and it's not the fallback), display it with an exclamation point.
         if (selected && selected !== "???") {
+          // Display the picked person's name in bold with an exclamation point.
           selectedPersonElem.innerHTML = `<b>${selected}!</b>`;
         } else {
-          // Fallback text: "???" (without an exclamation point)
           selectedPersonElem.innerHTML = `<b>???</b>`;
         }
       });
@@ -176,15 +174,8 @@
       onValue(restaurantRef, (snapshot) => {
         const select = document.getElementById("restaurant");
         if (!select) return;
-        // Clear existing options.
+        const currentValue = select.value;
         select.innerHTML = "";
-        // Add a default prompt option at the top.
-        const defaultOption = document.createElement("option");
-        defaultOption.value = "PICK A RESTAURANT";
-        defaultOption.textContent = "PICK A RESTAURANT";
-        select.appendChild(defaultOption);
-        
-        // Append restaurant options from Firebase.
         if (snapshot.exists()) {
           snapshot.forEach((childSnapshot) => {
             const restaurant = childSnapshot.val();
@@ -194,19 +185,22 @@
             select.appendChild(option);
           });
         }
-        // Add extra options.
-        const addNewOption = document.createElement("option");
-        addNewOption.value = "Choose New";
-        addNewOption.textContent = "Add a new restaurant";
-        select.appendChild(addNewOption);
-        
+        // Always add extra options.
+        const chooseNewOption = document.createElement("option");
+        chooseNewOption.value = "Choose New";
+        chooseNewOption.textContent = "Choose new restaurant";
+        select.appendChild(chooseNewOption);
+
         const pickRandomOption = document.createElement("option");
         pickRandomOption.value = "Pick Random";
         pickRandomOption.textContent = "Pick random restaurant to the dropdown";
         select.appendChild(pickRandomOption);
-        
-        // Set the default selected value to the prompt.
-        select.value = "PICK A RESTAURANT";
+
+        if (!currentValue || !Array.from(select.options).some(opt => opt.value === currentValue)) {
+          select.value = "Choose New";
+        } else {
+          select.value = currentValue;
+        }
         console.log("Restaurant dropdown updated. Current selection:", select.value);
         if (select.value === "Choose New") {
           handleRestaurantSelection();
@@ -258,7 +252,7 @@
     function pickRandomRestaurant() {
       const select = document.getElementById("restaurant");
       if (!select) return;
-      const validOptions = Array.from(select.options).filter(opt => opt.value !== "PICK A RESTAURANT" && opt.value !== "Choose New" && opt.value !== "Pick Random");
+      const validOptions = Array.from(select.options).filter(opt => opt.value !== "Choose New" && opt.value !== "Pick Random");
       if (validOptions.length === 0) {
         alert("No restaurants available to pick.");
         return;
