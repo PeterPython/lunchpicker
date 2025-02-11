@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Lunch Lottery</title>
+  <title>Lunch!</title>
   <script type="module">
     // Import Firebase modules
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.3.0/firebase-app.js";
@@ -33,12 +33,10 @@
       const name = nameSelect.value;
       const selectedRadio = document.querySelector('input[name="officeStatus"]:checked');
       if (!selectedRadio) {
-        // No option selected—do nothing.
         return;
       }
       const inOffice = selectedRadio.value;
       if (inOffice === "yes") {
-        // Use the person's name as a key so that changes update the record.
         set(ref(db, "officeAttendance/" + name), name)
           .then(() => console.log("Attendance updated for:", name))
           .catch((error) => console.error("Error updating attendance:", error));
@@ -50,6 +48,7 @@
     }
 
     function nameChanged() {
+      // Clear radio selections when the name changes.
       Array.from(document.getElementsByName("officeStatus")).forEach(radio => {
         radio.checked = false;
       });
@@ -101,7 +100,6 @@
       onValue(restaurantRef, (snapshot) => {
         const select = document.getElementById("restaurant");
         if (!select) return;
-        // Preserve current selection, if any.
         const currentValue = select.value;
         select.innerHTML = "";
         if (snapshot.exists()) {
@@ -119,15 +117,12 @@
         newOption.textContent = "Choose new restaurant";
         select.appendChild(newOption);
 
-        // If there is no valid current selection, default to "Choose New"
         if (!currentValue || !Array.from(select.options).some(opt => opt.value === currentValue)) {
           select.value = "Choose New";
         } else {
           select.value = currentValue;
         }
         console.log("Restaurant dropdown updated. Current selection:", select.value);
-
-        // If "Choose New" is selected, automatically trigger the handler.
         if (select.value === "Choose New") {
           handleRestaurantSelection();
         }
@@ -143,16 +138,13 @@
         console.error("New restaurant container not found.");
         return;
       }
-      // Clear any existing input/button.
       newRestaurantContainer.innerHTML = "";
       if (select.value === "Choose New") {
         console.log("User selected 'Choose New'. Creating input field.");
-        // Create a text input field for the new restaurant name.
         const newInput = document.createElement("input");
         newInput.type = "text";
         newInput.id = "newRestaurantInput";
         newInput.placeholder = "Enter new restaurant name";
-        // Create an Add button.
         const addButton = document.createElement("button");
         addButton.id = "addRestaurantButton";
         addButton.textContent = "Add";
@@ -181,22 +173,39 @@
       }
     }
 
-    // Attach realtime listeners when the DOM is fully loaded.
+    // NEW FUNCTION: Picks a random restaurant from the dropdown (ignoring "Choose New")
+    function pickRandomRestaurant() {
+      const select = document.getElementById("restaurant");
+      if (!select) return;
+      // Build an array of valid restaurant options (exclude the "Choose New" option)
+      const validOptions = Array.from(select.options).filter(opt => opt.value !== "Choose New");
+      if (validOptions.length === 0) {
+        alert("No restaurants available to pick.");
+        return;
+      }
+      const randomIndex = Math.floor(Math.random() * validOptions.length);
+      const randomRestaurant = validOptions[randomIndex].value;
+      const selectedRestaurantElem = document.getElementById("selectedRestaurant");
+      selectedRestaurantElem.textContent = randomRestaurant;
+      select.value = randomRestaurant;
+      console.log("Random restaurant picked:", randomRestaurant);
+    }
+
     document.addEventListener("DOMContentLoaded", () => {
       attachOfficeAttendanceListener();
       attachRestaurantListener();
     });
 
-    // Expose functions for inline event handling.
     window.updateAttendance = updateAttendance;
     window.nameChanged = nameChanged;
     window.pickRandomPerson = pickRandomPerson;
     window.clearOfficeData = clearOfficeData;
     window.handleRestaurantSelection = handleRestaurantSelection;
+    window.pickRandomRestaurant = pickRandomRestaurant;
   </script>
 </head>
 <body>
-  <h1>Lunch Lottery</h1>
+  <h1>Lunch!</h1>
   
   <!-- Office Attendance Section -->
   <h2>Will you be in the office today?</h2>
@@ -217,20 +226,23 @@
     <input type="radio" name="officeStatus" value="no" onchange="updateAttendance()"> No
   </label>
   
-  <h2>In Office</h2>
+  <h2>In office today</h2>
   <ul id="officeList"></ul>
   
-  <h2>Pick a Random Person</h2>
-  <button onclick="pickRandomPerson()">Pick</button>
+  <!-- Restaurant selector section -->
+  <h2>Restaurant selector</h2>
+  <button onclick="pickRandomPerson()">Restaurant selector</button>
   <p id="selectedPerson"></p>
   
-  <h2>Clear Office Data</h2>
-  <button onclick="clearOfficeData()">Clear Office Data</button>
+  <!-- RESET button -->
+  <button onclick="clearOfficeData()">RESET</button>
   
-  <!-- Restaurant Selector Section -->
-  <h2>Restaurant Selector</h2>
+  <!-- Restaurants Section -->
+  <h2>Restaurants</h2>
   <select id="restaurant" onchange="handleRestaurantSelection()"></select>
   <p id="selectedRestaurant"></p>
   <div id="newRestaurantContainer"></div>
+  <!-- New "Pick random restaurant" button -->
+  <button onclick="pickRandomRestaurant()">Pick random restaurant</button>
 </body>
 </html>
