@@ -12,7 +12,7 @@
       margin: 0;
       padding: 20px;
     }
-    h2, #selectedPerson {
+    h2 {
       font-size: 2em;
     }
     /* Table styling */
@@ -37,10 +37,15 @@
       border-radius: 50%;
       display: block;
     }
-    /* Pointer styling (placed absolutely over the canvas) */
+    /* Pointer styling: Positioned so that its tip is on the top edge of the wheel */
     #pointer {
       position: absolute;
-      top: -30px; /* adjust this value as needed */
+      /* 
+         The roulette wheel is drawn with a center at (200,200) and a radius of 180 
+         (since canvas is 400x400 and we subtract 20). Hence, the top edge is at 200-180 = 20px.
+         With a triangle height of 30px (via border-bottom), setting top to -10px makes the tip land at 20px.
+      */
+      top: -10px; 
       left: 50%;
       transform: translateX(-50%);
       width: 0;
@@ -50,7 +55,6 @@
       border-bottom: 30px solid #333;
     }
   </style>
-  
   <!-- Firebase & Main App Script (as a module) -->
   <script type="module">
     // Import Firebase modules
@@ -78,7 +82,7 @@
 
     // Full list of names (if needed elsewhere)
     const persons = ["Alec", "Chai", "Cole", "Denis", "Hunter", "Pete"];
-    window.persons = persons; // exposed globally
+    window.persons = persons; // Exposed globally
 
     /* ====================================
        Clock & Auto-Selection Functionality
@@ -96,14 +100,8 @@
       
       // Auto-select a random person at 10am or later if no one is selected.
       if (hour >= 10 && !autoSelectionMade) {
-        const selectedPersonElem = document.getElementById("selectedPerson");
-        if (!selectedPersonElem.innerText ||
-            selectedPersonElem.innerText.trim() === "" ||
-            selectedPersonElem.innerText.includes("???")) {
-          console.log("Auto selecting random person because it's 10am or later and no one is selected.");
-          pickRandomPerson();
-          autoSelectionMade = true;
-        }
+        pickRandomPerson();
+        autoSelectionMade = true;
       }
     }
 
@@ -111,18 +109,13 @@
     function attachLunchSelectionListener() {
       const lunchSelectionRef = ref(db, "lunchSelection/selectedPerson");
       onValue(lunchSelectionRef, (snapshot) => {
-        const selected = snapshot.val();
-        const selectedPersonElem = document.getElementById("selectedPerson");
-        if (selected && selected !== "???") {
-          selectedPersonElem.innerHTML = `<b>${selected}!</b>`;
-        } else {
-          selectedPersonElem.innerHTML = `<b>???</b>`;
-        }
+        // In this version, the selected name display below the table has been removed.
+        console.log("Selected person persisted:", snapshot.val());
       });
     }
 
     /* ====================================
-       Office Attendance Table Functions
+       Eating in Office Table Functions
        ==================================== */
     function updateCellBackground(name, selected) {
       const cell = document.getElementById("nameCell_" + name);
@@ -196,7 +189,6 @@
       remove(ref(db, "officeAttendance"))
         .then(() => console.log("Office attendance cleared"))
         .catch(error => console.error("Error clearing office attendance:", error));
-      document.getElementById("selectedPerson").textContent = "";
     }
 
     /* ====================================
@@ -290,13 +282,12 @@
   <!-- Clock Display -->
   <div id="clock"></div>
   
-  <!-- Office Attendance Section -->
-  <h2>Office Attendance</h2>
+  <!-- Table for "Eating in office?" (Note: the "Office Attendance" heading has been removed) -->
   <table id="attendanceTable">
     <thead>
       <tr>
         <th>Name</th>
-        <th>In Office?</th>
+        <th>Eating in office?</th>
       </tr>
     </thead>
     <tbody>
@@ -380,12 +371,12 @@
       </tr>
     </tbody>
   </table>
-  <!-- The "Pick Random Person" button has been removed -->
-  <div id="selectedPerson"><b>???</b></div>
+  <!-- The selected name display has been removed -->
   
   <!-- Roulette Wheel Section -->
   <h2>Roulette Wheel</h2>
   <div id="rouletteContainer">
+    <!-- The pointer is now positioned on the top edge of the wheel so that its tip is at the circle's border and points inward -->
     <div id="pointer"></div>
     <canvas id="rouletteWheel" width="400" height="400"></canvas>
   </div>
@@ -492,22 +483,17 @@
         if (progress < 1) {
           requestAnimationFrame(animateRoulette);
         } else {
-          // Now determine which sector's center is closest to the pointer.
-          // We assume the pointer arrow corresponds to an angle of -π/2 (i.e. the top of the circle).
+          // Determine which sector's center is closest to the pointer.
+          // We assume the pointer's tip is on the top edge (at angle -π/2).
           const pointerAngle = -Math.PI / 2;
           const normalizedAngle = rouletteCurrentAngle % (2 * Math.PI);
-          // Compute the pointer's position relative to the wheel's rotation.
           let pointerPos = (2 * Math.PI + pointerAngle - normalizedAngle) % (2 * Math.PI);
-          // The winning sector index is the one whose center is nearest to the pointer.
           let winnerIndex = Math.round(pointerPos / currentSectorAngle) % sectors;
-          // The center of the winning sector (relative to the wheel's rotation) is:
+          // The center of the winning sector is:
           const desiredCenter = (winnerIndex + 0.5) * currentSectorAngle;
-          // We want to adjust rouletteCurrentAngle so that:
-          // (2π + pointerAngle - (rouletteCurrentAngle mod 2π)) = desiredCenter.
           const targetRotationMod = (2 * Math.PI + pointerAngle - desiredCenter) % (2 * Math.PI);
           const currentMod = rouletteCurrentAngle % (2 * Math.PI);
           let delta = targetRotationMod - currentMod;
-          // Adjust delta to take the shortest path.
           if (delta > Math.PI) {
             delta -= 2 * Math.PI;
           } else if (delta < -Math.PI) {
@@ -515,7 +501,7 @@
           }
           const finalTargetAngle = rouletteCurrentAngle + delta;
           
-          // Snap animation (e.g., 1 second) to align the winning sector.
+          // Snap animation (1 second) to align the winning sector.
           const snapDuration = 1000;
           const snapStartAngle = rouletteCurrentAngle;
           const snapStartTime = performance.now();
