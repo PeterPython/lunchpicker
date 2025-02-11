@@ -146,7 +146,7 @@
       if (inOfficeNames.length > 0) {
         const randomIndex = Math.floor(Math.random() * inOfficeNames.length);
         const selected = inOfficeNames[randomIndex];
-        // Persist the selection to Firebase so that it remains persistent.
+        // Persist the selection so that it remains persistent.
         set(ref(db, "lunchSelection/selectedPerson"), selected)
           .then(() => console.log("Random person selected and persisted:", selected))
           .catch(error => console.error("Error persisting selection:", error));
@@ -159,7 +159,7 @@
       remove(ref(db, "officeAttendance"))
         .then(() => console.log("Office attendance cleared"))
         .catch(error => console.error("Error clearing office attendance:", error));
-      // Note: We do not clear the persistent lunch selection so that it remains.
+      document.getElementById("selectedPerson").textContent = "";
     }
 
     /* ====================================
@@ -364,8 +364,7 @@
     </tbody>
   </table>
   
-  <!-- "Restaurant selector" section for picking a random person from those in office -->
-  <h2>Restaurant selector</h2>
+  <!-- Section for picking a random person from those in office (persistent selection) -->
   <button onclick="pickRandomPerson()">Choose a person</button>
   <p id="selectedPerson"></p>
   
