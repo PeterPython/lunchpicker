@@ -6,9 +6,10 @@
   <title>Lunch Lottery</title>
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.3.0/firebase-app.js";
-    import { getDatabase, ref, push, onValue, remove } from "https://www.gstatic.com/firebasejs/11.3.0/firebase-database.js";
+    // Note: We now import set along with the other methods.
+    import { getDatabase, ref, set, onValue, remove, push } from "https://www.gstatic.com/firebasejs/11.3.0/firebase-database.js";
 
-    // Firebase configuration using your actual keys.
+    // Firebase configuration (using your actual keys)
     const firebaseConfig = {
       apiKey: "AIzaSyAaihPMwzCZEYQV_pUaffWKqIqxubAlzkc",
       authDomain: "lunch-beda3.firebaseapp.com",
@@ -24,28 +25,36 @@
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
 
-    /* ==============================
+    /* ====================================
        Office Attendance Functions
-       ============================== */
+       ==================================== */
 
-    // Submit office attendance response (only if "yes" is selected)
-    function submitResponse() {
+    // This function updates the office attendance record automatically.
+    // It uses the "name" as a key so that if the person changes their answer,
+    // the entry is updated or removed accordingly.
+    function updateAttendance() {
       const nameSelect = document.getElementById("name");
       const name = nameSelect.value;
       const selectedRadio = document.querySelector('input[name="officeStatus"]:checked');
       if (!selectedRadio) {
-        alert("Please select your office attendance status.");
+        // If no radio button is selected, do nothing.
         return;
       }
       const inOffice = selectedRadio.value;
-      if (name && inOffice === "yes") {
-        push(ref(db, "officeAttendance"), name)
-          .then(() => console.log("Attendance recorded for:", name))
-          .catch((error) => console.error("Error recording attendance:", error));
+      if (inOffice === "yes") {
+        // Add (or update) the person in the officeAttendance node.
+        set(ref(db, "officeAttendance/" + name), name)
+          .then(() => console.log("Attendance updated for:", name))
+          .catch((error) => console.error("Error updating attendance:", error));
+      } else if (inOffice === "no") {
+        // Remove the person from the officeAttendance node.
+        remove(ref(db, "officeAttendance/" + name))
+          .then(() => console.log("Attendance removed for:", name))
+          .catch((error) => console.error("Error removing attendance:", error));
       }
     }
 
-    // Attach a realtime listener to update the "In Office" list.
+    // Realtime listener for office attendance: updates the "In Office" list.
     function attachOfficeAttendanceListener() {
       const officeAttendanceRef = ref(db, "officeAttendance");
       onValue(officeAttendanceRef, (snapshot) => {
@@ -83,11 +92,11 @@
       document.getElementById("selectedPerson").textContent = "";
     }
 
-    /* ==============================
+    /* ====================================
        Restaurant Selector Functions
-       ============================== */
+       ==================================== */
 
-    // Attach a realtime listener to update the restaurant dropdown.
+    // Attaches a realtime listener to update the restaurant dropdown.
     function attachRestaurantListener() {
       const restaurantRef = ref(db, "restaurants");
       onValue(restaurantRef, (snapshot) => {
@@ -111,18 +120,14 @@
         newOption.textContent = "Choose new restaurant";
         select.appendChild(newOption);
 
-        // If no restaurants exist (i.e. only one option is present), automatically trigger the new restaurant input.
-        if (select.options.length === 1) {
-          select.value = "Choose New";
-          handleRestaurantSelection();
-        } else if (currentValue && Array.from(select.options).some(opt => opt.value === currentValue)) {
+        if (currentValue && Array.from(select.options).some(opt => opt.value === currentValue)) {
           select.value = currentValue;
         }
       });
     }
 
-    // Handle changes in the restaurant dropdown.
-    // When "Choose New" is selected, display an input field and an Add button.
+    // Handles changes in the restaurant dropdown.
+    // When "Choose New" is selected, displays an input field and an Add button.
     function handleRestaurantSelection() {
       const select = document.getElementById("restaurant");
       const selectedRestaurantElem = document.getElementById("selectedRestaurant");
@@ -152,9 +157,7 @@
             push(ref(db, "restaurants"), newRestaurant)
               .then(() => {
                 selectedRestaurantElem.textContent = newRestaurant;
-                // Clear the input/button container.
                 newRestaurantContainer.innerHTML = "";
-                // Update the dropdown's selection.
                 select.value = newRestaurant;
               })
               .catch((error) => console.error("Error adding new restaurant:", error));
@@ -179,8 +182,8 @@
       attachRestaurantListener();
     });
 
-    // Expose functions to the global scope for inline event handling.
-    window.submitResponse = submitResponse;
+    // Expose functions for inline event handling.
+    window.updateAttendance = updateAttendance;
     window.pickRandomPerson = pickRandomPerson;
     window.clearOfficeData = clearOfficeData;
     window.handleRestaurantSelection = handleRestaurantSelection;
@@ -192,7 +195,8 @@
   <!-- Office Attendance Section -->
   <h2>Will you be in the office today?</h2>
   <label for="name">Select your name:</label>
-  <select id="name">
+  <!-- Call updateAttendance() when the name selection changes -->
+  <select id="name" onchange="updateAttendance()">
     <option value="Alec">Alec</option>
     <option value="Chai">Chai</option>
     <option value="Cole">Cole</option>
@@ -201,13 +205,13 @@
     <option value="Pete">Pete</option>
   </select>
   <br>
+  <!-- Radio buttons call updateAttendance() on change -->
   <label>
-    <input type="radio" name="officeStatus" value="yes"> Yes
+    <input type="radio" name="officeStatus" value="yes" onchange="updateAttendance()"> Yes
   </label>
   <label>
-    <input type="radio" name="officeStatus" value="no"> No
+    <input type="radio" name="officeStatus" value="no" onchange="updateAttendance()"> No
   </label>
-  <button onclick="submitResponse()">Submit</button>
   
   <h2>In Office</h2>
   <ul id="officeList"></ul>
