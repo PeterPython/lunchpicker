@@ -32,9 +32,9 @@
        ==================================== */
     function updateClock() {
       const clockElement = document.getElementById("clock");
+      // Use hour12: true for AM/PM format.
       const options = { timeZone: 'America/New_York', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true };
       const timeString = new Intl.DateTimeFormat('en-US', options).format(new Date());
-      // Display time in AM/PM format with "Time:" prefix.
       clockElement.textContent = "Time: " + timeString;
       
       const parts = timeString.split(':');
@@ -46,8 +46,7 @@
         const selectedPersonElem = document.getElementById("selectedPerson");
         if (!selectedPersonElem.innerText ||
             selectedPersonElem.innerText.trim() === "" ||
-            selectedPersonElem.innerText.includes("???") ||
-            selectedPersonElem.innerText.includes("No one is in the office")) {
+            selectedPersonElem.innerText.includes("???")) {
           console.log("Auto selecting random person because it's 10am or later and no one is selected.");
           pickRandomPerson();
           autoSelectionMade = true;
@@ -61,10 +60,11 @@
       onValue(lunchSelectionRef, (snapshot) => {
         const selected = snapshot.val();
         const selectedPersonElem = document.getElementById("selectedPerson");
-        // If the stored value is missing or equals the old fallback, display "???".
-        if (selected && selected !== "No one is in the office.!" ) {
+        if (selected) {
+          // Display the picked person's name in bold with an exclamation point.
           selectedPersonElem.innerHTML = `<b>${selected}!</b>`;
         } else {
+          // Fallback text: "???" without an exclamation point.
           selectedPersonElem.innerHTML = `<b>???</b>`;
         }
       });
