@@ -8,7 +8,7 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.3.0/firebase-app.js";
     import { getDatabase, ref, set, remove, push, onValue } from "https://www.gstatic.com/firebasejs/11.3.0/firebase-database.js";
 
-    // Firebase configuration (using your actual keys)
+    // Firebase configuration using your actual keys.
     const firebaseConfig = {
       apiKey: "AIzaSyAaihPMwzCZEYQV_pUaffWKqIqxubAlzkc",
       authDomain: "lunch-beda3.firebaseapp.com",
@@ -38,6 +38,7 @@
       }
       const inOffice = selectedRadio.value;
       if (inOffice === "yes") {
+        // Use the person's name as a key so that changes update the record.
         set(ref(db, "officeAttendance/" + name), name)
           .then(() => console.log("Attendance updated for:", name))
           .catch((error) => console.error("Error updating attendance:", error));
@@ -117,10 +118,19 @@
         newOption.value = "Choose New";
         newOption.textContent = "Choose new restaurant";
         select.appendChild(newOption);
-        if (currentValue && Array.from(select.options).some(opt => opt.value === currentValue)) {
+
+        // If there is no valid current selection, default to "Choose New"
+        if (!currentValue || !Array.from(select.options).some(opt => opt.value === currentValue)) {
+          select.value = "Choose New";
+        } else {
           select.value = currentValue;
         }
         console.log("Restaurant dropdown updated. Current selection:", select.value);
+
+        // If "Choose New" is selected, automatically trigger the handler.
+        if (select.value === "Choose New") {
+          handleRestaurantSelection();
+        }
       });
     }
 
@@ -171,7 +181,7 @@
       }
     }
 
-    // Attach realtime listeners when the DOM is loaded.
+    // Attach realtime listeners when the DOM is fully loaded.
     document.addEventListener("DOMContentLoaded", () => {
       attachOfficeAttendanceListener();
       attachRestaurantListener();
