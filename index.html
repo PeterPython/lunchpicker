@@ -34,17 +34,18 @@
       const clockElement = document.getElementById("clock");
       const options = { timeZone: 'America/New_York', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
       const timeString = new Intl.DateTimeFormat('en-US', options).format(new Date());
-      clockElement.textContent = "ET Time: " + timeString;
+      // Remove the "ET" text; display just "Time:"
+      clockElement.textContent = "Time: " + timeString;
       
       const parts = timeString.split(':');
       const hour = parseInt(parts[0], 10);
-      // If it's 10am ET or later and no one is selected, auto-pick a random person.
+      // If it's 10am or later and no one is selected, auto-pick a random person.
       if (hour >= 10 && !autoSelectionMade) {
         const selectedPersonElem = document.getElementById("selectedPerson");
         if (!selectedPersonElem.textContent ||
             selectedPersonElem.textContent.trim() === "" ||
             selectedPersonElem.textContent.includes("No one")) {
-          console.log("Auto selecting random person because it's 10am ET or later and no one is selected.");
+          console.log("Auto selecting random person because it's 10am or later and no one is selected.");
           pickRandomPerson();
           autoSelectionMade = true;
         }
@@ -146,7 +147,6 @@
       if (inOfficeNames.length > 0) {
         const randomIndex = Math.floor(Math.random() * inOfficeNames.length);
         const selected = inOfficeNames[randomIndex];
-        // Persist the selection so that it remains persistent.
         set(ref(db, "lunchSelection/selectedPerson"), selected)
           .then(() => console.log("Random person selected and persisted:", selected))
           .catch(error => console.error("Error persisting selection:", error));
@@ -181,11 +181,16 @@
             select.appendChild(option);
           });
         }
-        // Always add the "Choose new restaurant" option.
-        const newOption = document.createElement("option");
-        newOption.value = "Choose New";
-        newOption.textContent = "Choose new restaurant";
-        select.appendChild(newOption);
+        // Always add extra options.
+        const chooseNewOption = document.createElement("option");
+        chooseNewOption.value = "Choose New";
+        chooseNewOption.textContent = "Choose new restaurant";
+        select.appendChild(chooseNewOption);
+
+        const pickRandomOption = document.createElement("option");
+        pickRandomOption.value = "Pick Random";
+        pickRandomOption.textContent = "Pick random restaurant to the dropdown";
+        select.appendChild(pickRandomOption);
 
         if (!currentValue || !Array.from(select.options).some(opt => opt.value === currentValue)) {
           select.value = "Choose New";
@@ -195,6 +200,8 @@
         console.log("Restaurant dropdown updated. Current selection:", select.value);
         if (select.value === "Choose New") {
           handleRestaurantSelection();
+        } else if (select.value === "Pick Random") {
+          pickRandomRestaurant();
         }
       });
     }
@@ -202,7 +209,6 @@
     function handleRestaurantSelection() {
       const select = document.getElementById("restaurant");
       console.log("handleRestaurantSelection triggered. Current selection:", select.value);
-      const selectedRestaurantElem = document.getElementById("selectedRestaurant");
       const newRestaurantContainer = document.getElementById("newRestaurantContainer");
       if (!newRestaurantContainer) {
         console.error("New restaurant container not found.");
@@ -214,7 +220,7 @@
         const newInput = document.createElement("input");
         newInput.type = "text";
         newInput.id = "newRestaurantInput";
-        newInput.placeholder = "Enter new restaurant name";
+        newInput.placeholder = "New restaurant name";
         const addButton = document.createElement("button");
         addButton.id = "addRestaurantButton";
         addButton.textContent = "Add";
@@ -225,7 +231,6 @@
             push(ref(db, "restaurants"), newRestaurant)
               .then(() => {
                 console.log("New restaurant added:", newRestaurant);
-                selectedRestaurantElem.textContent = newRestaurant;
                 newRestaurantContainer.innerHTML = "";
                 select.value = newRestaurant;
               })
@@ -237,24 +242,22 @@
         newRestaurantContainer.appendChild(newInput);
         newRestaurantContainer.appendChild(addButton);
         newInput.focus();
-      } else {
-        console.log("User selected:", select.value);
-        selectedRestaurantElem.textContent = select.value;
+      } else if (select.value === "Pick Random") {
+          console.log("User selected 'Pick Random'. Calling pickRandomRestaurant().");
+          pickRandomRestaurant();
       }
     }
 
     function pickRandomRestaurant() {
       const select = document.getElementById("restaurant");
       if (!select) return;
-      const validOptions = Array.from(select.options).filter(opt => opt.value !== "Choose New");
+      const validOptions = Array.from(select.options).filter(opt => opt.value !== "Choose New" && opt.value !== "Pick Random");
       if (validOptions.length === 0) {
         alert("No restaurants available to pick.");
         return;
       }
       const randomIndex = Math.floor(Math.random() * validOptions.length);
       const randomRestaurant = validOptions[randomIndex].value;
-      const selectedRestaurantElem = document.getElementById("selectedRestaurant");
-      selectedRestaurantElem.textContent = randomRestaurant;
       select.value = randomRestaurant;
       console.log("Random restaurant picked:", randomRestaurant);
     }
@@ -270,7 +273,6 @@
       startClock();
     });
 
-    // Expose functions for inline event handling.
     window.updateAttendanceFor = updateAttendanceFor;
     window.attachOfficeAttendanceListener = attachOfficeAttendanceListener;
     window.attachRestaurantListener = attachRestaurantListener;
@@ -364,7 +366,10 @@
     </tbody>
   </table>
   
-  <!-- Section for picking a random person from those in office (persistent selection) -->
+  <!-- Add white space after the table -->
+  <div style="height: 20px;"></div>
+  
+  <!-- Section for picking a random person (persistent selection) -->
   <button onclick="pickRandomPerson()">Choose a person</button>
   <p id="selectedPerson"></p>
   
@@ -374,7 +379,7 @@
   <!-- Restaurant Section -->
   <h2>Pick a restaurant</h2>
   <select id="restaurant" onchange="handleRestaurantSelection()"></select>
-  <p id="selectedRestaurant"></p>
+  <!-- The redundant text element showing the restaurant selection has been removed -->
   <div id="newRestaurantContainer"></div>
   <button onclick="pickRandomRestaurant()">Pick random restaurant</button>
 </body>
