@@ -28,9 +28,9 @@
        Office Attendance Table Functions
        ==================================== */
 
-    // Called when a radio button for a person is changed.
-    // It checks which option (yes/no) is selected, updates Firebase accordingly,
-    // and turns the corresponding name cell green if "yes" is selected.
+    // Called when a radio button for a specific person is changed.
+    // If "yes" is selected, the person's name is stored in Firebase and their name cell turns green.
+    // If "no" is selected, their attendance is removed and the background is cleared.
     function updateAttendanceFor(name) {
       const radios = document.getElementsByName("officeStatus_" + name);
       let selected = "";
@@ -54,9 +54,7 @@
       }
     }
 
-    // Attaches a realtime listener to update the table based on Firebase data.
-    // For each fixed name, if an attendance entry exists, it checks the "Yes" radio
-    // and turns the name cell green; otherwise, it clears any selection.
+    // Attaches a realtime listener to update the table based on Firebase attendance data.
     function attachOfficeAttendanceListener() {
       const officeAttendanceRef = ref(db, "officeAttendance");
       onValue(officeAttendanceRef, (snapshot) => {
@@ -103,6 +101,7 @@
         newOption.value = "Choose New";
         newOption.textContent = "Choose new restaurant";
         select.appendChild(newOption);
+
         if (!currentValue || !Array.from(select.options).some(opt => opt.value === currentValue)) {
           select.value = "Choose New";
         } else {
@@ -162,7 +161,6 @@
     function pickRandomRestaurant() {
       const select = document.getElementById("restaurant");
       if (!select) return;
-      // Get all valid restaurant options (excluding "Choose New")
       const validOptions = Array.from(select.options).filter(opt => opt.value !== "Choose New");
       if (validOptions.length === 0) {
         alert("No restaurants available to pick.");
@@ -192,8 +190,7 @@
 <body>
   <h1>Lunch!</h1>
   
-  <!-- Office Attendance Table Section -->
-  <h2>Office Attendance</h2>
+  <!-- Office Attendance Table (heading removed) -->
   <table id="attendanceTable" border="1" cellpadding="5">
     <thead>
       <tr>
